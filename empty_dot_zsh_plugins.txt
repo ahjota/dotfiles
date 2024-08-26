@@ -3,3 +3,5 @@
 # Basic Zsh plugins are defined in user/repo format
 agkozak/zsh-z
 
+# The following is replaced by atuin
+# zsh-users/zsh-history-substring-search
