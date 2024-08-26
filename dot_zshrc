@@ -8,3 +8,9 @@ if [[ $(command -v atuin) ]] then
   . "$HOME/.atuin/bin/env"
   eval "$(atuin init zsh)"
 fi
+
+if [[ $(command -v starship) ]] then
+  export STARSHIP_CONFIG=${AJ_CONFIG}/starship.toml
+  # You may still need to add this at the end of .zshrc for it to work
+  eval "$(starship init zsh)"
+fi
