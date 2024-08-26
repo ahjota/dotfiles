@@ -10,3 +10,8 @@
 > profiles! (Woo-oo!)  
 
 ## Prerequisites
+
+[chezmoi](https://www.chezmoi.io/)
+```sh
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply $GITHUB_USERNAME
+```
