@@ -8,3 +8,5 @@ This repo's my attempt to repro
 Dotfiles! (Woo-oo!)
 Configs, options, run commands, and
 profiles! (Woo-oo!)
+
+## Prerequisites
