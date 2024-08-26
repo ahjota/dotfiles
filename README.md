@@ -11,6 +11,14 @@
 
 ## Prerequisites
 
+[homebrew](https://brew.sh/)
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+[antidote](https://getantidote.github.io/)
+```sh
+brew install antidote
+```
 [chezmoi](https://www.chezmoi.io/)
 ```sh
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply $GITHUB_USERNAME
