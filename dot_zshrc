@@ -3,3 +3,7 @@ export STARSHIP_CONFIG=${AJ_CONFIG}/config/starship.toml
 eval $(starship init zsh)
 
 setopt autocd
+
+# install atuin
+. "$HOME/.atuin/bin/env"
+eval "$(atuin init zsh)"
