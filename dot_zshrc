@@ -2,6 +2,9 @@ export AJ_CONFIG=${HOME}/workspace/dev
 
 setopt autocd
 
+# vim keybindings in shell
+bindkey -v
+
 . "$HOME/.atuin/bin/env"
 eval "$(atuin init zsh)"
 
