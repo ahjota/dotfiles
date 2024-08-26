@@ -5,6 +5,8 @@ setopt autocd
 # vim keybindings in shell
 bindkey -v
 
+export HOMEBREW_NO_AUTO_UPDATE=1
+
 . "$HOME/.atuin/bin/env"
 eval "$(atuin init zsh)"
 
