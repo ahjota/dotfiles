@@ -1,4 +1,4 @@
-export AJ_CONFIG=~/workspace/dev
+export AJ_CONFIG=${HOME}/workspace/dev
 export STARSHIP_CONFIG=${AJ_CONFIG}/config/starship.toml
 eval $(starship init zsh)
 
