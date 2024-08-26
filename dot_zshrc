@@ -1,0 +1,5 @@
+export AJ_CONFIG=~/workspace/dev
+export STARSHIP_CONFIG=${AJ_CONFIG}/config/starship.toml
+eval $(starship init zsh)
+
+setopt autocd
