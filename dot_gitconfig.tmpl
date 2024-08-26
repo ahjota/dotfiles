@@ -1,0 +1,9 @@
+[user]
+	name = AJ Alon
+	email = {{- if eq .chezmoi.hostname "work-laptop"}} aj.alon@datarobot.com {{else}} alexander.joel.alon@gmail.com {{end}}
+[pull]
+	rebase = true
+[push]
+	default = current
+[core]
+	editor = vim
