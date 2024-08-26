@@ -3,5 +3,8 @@
 # Basic Zsh plugins are defined in user/repo format
 agkozak/zsh-z
 
+zsh-users/zsh-autosuggestions
+zdharma-continuum/fast-syntax-highlighting
+
 # The following is replaced by atuin
 # zsh-users/zsh-history-substring-search
