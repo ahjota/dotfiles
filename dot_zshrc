@@ -1,6 +1,4 @@
 export AJ_CONFIG=${HOME}/workspace/dev
-export STARSHIP_CONFIG=${AJ_CONFIG}/config/starship.toml
-eval $(starship init zsh)
 
 setopt autocd
 
@@ -13,7 +11,7 @@ source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh
 antidote load
 
 if [[ $(command -v starship) ]] then
-  export STARSHIP_CONFIG=${AJ_CONFIG}/starship.toml
+  export STARSHIP_CONFIG=${AJ_CONFIG}/config/starship.toml
   # You may still need to add this at the end of .zshrc for it to work
   eval "$(starship init zsh)"
 fi
