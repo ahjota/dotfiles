@@ -4,6 +4,7 @@ eval $(starship init zsh)
 
 setopt autocd
 
-# install atuin
-. "$HOME/.atuin/bin/env"
-eval "$(atuin init zsh)"
+if [[ $(command -v atuin) ]] then
+  . "$HOME/.atuin/bin/env"
+  eval "$(atuin init zsh)"
+fi
