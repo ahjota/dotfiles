@@ -2,10 +2,8 @@ export AJ_CONFIG=${HOME}/workspace/dev
 
 setopt autocd
 
-if [[ $(command -v atuin) ]] then
-  . "$HOME/.atuin/bin/env"
-  eval "$(atuin init zsh)"
-fi
+. "$HOME/.atuin/bin/env"
+eval "$(atuin init zsh)"
 
 source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh
 antidote load
