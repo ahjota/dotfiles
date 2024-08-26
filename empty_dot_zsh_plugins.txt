@@ -1,10 +1,11 @@
 # .zsh_plugins.txt - comments begin with "#"
 
 # Basic Zsh plugins are defined in user/repo format
-agkozak/zsh-z
-
 zsh-users/zsh-autosuggestions
 zdharma-continuum/fast-syntax-highlighting
+
+agkozak/zsh-z
+mattmc3/ez-compinit
 
 # The following is replaced by atuin
 # zsh-users/zsh-history-substring-search
