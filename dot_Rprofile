@@ -1,0 +1,100 @@
+options(Ncpus = 8) # for faster compilation
+options(keep.source.pkgs = TRUE) # for debugging
+options(repos=structure(c(CRAN="https://ftp.osuosl.org/pub/cran"))) # use US(OR) CRAN mirror by default
+
+if (interactive()) {
+  # check for packages you *always* need
+  suppressMessages(require(devtools))
+}
+
+uninstall_dr <- function() {
+  message("Uninstalling datarobot package/s...")
+
+  # session cleanup if you've been working with an older version of the package
+  try({
+    unloadNamespace("datarobot")
+    unloadNamespace("datarobot.apicore")
+  })
+  try({
+    remove.packages("datarobot")
+    remove.packages("datarobot.apicore")
+  })
+}
+
+install_dr_deps <- function() {
+  message("Sourcing install_packages.R...")
+  if (utils::askYesNo("Installing all the R packages will take a while. Proceed?"))
+    source("~/workspace/r-client/jenkins/install_packages.R")
+  else
+    message("Package install aborted.")
+}
+
+install_dr_source <- function() {
+  # session cleanup if you've been working with an older version of the package
+  try({
+    remove.packages("datarobot")
+    remove.packages("datarobot.apicore")
+  })
+
+  # install from source, this will take some time
+  cwd <- getwd()
+  tryCatch(
+    {
+      setwd("~/workspace/r-client/")
+      if (file.exists("generated/")) {
+        # when you're working in <=2.18
+        install.packages("generated", repos = NULL, type = "source")
+      }
+      install.packages(".", repos = NULL, type = "source")
+      # load packages into the search path
+      library(datarobot.apicore)
+      library(datarobot)
+
+      invisible(dr$ProjectsApi$List())
+    },
+    finally = setwd(cwd)
+  )
+}
+
+install_dr_beta <- function() {
+  # session cleanup if you've been working with an older version of the package
+  try({
+    remove.packages("datarobot")
+    remove.packages("datarobot.apicore")
+  })
+
+  # download new packages from artifactory
+  install.packages("https://artifactory.devinfra.drdev.io/artifactory/datarobot-rsource-dev/datarobot.apicore_beta.tgz", repos = NULL)
+  install.packages("https://artifactory.devinfra.drdev.io/artifactory/datarobot-rsource-dev/datarobot_beta.tgz", repos = NULL)
+
+  # load packages into the search path
+  library(datarobot.apicore)
+  library(datarobot)
+
+  invisible(dr$ProjectsApi$List())
+}
+
+configure_dr <- function() {
+  if (requireNamespace("datarobot", quietly = TRUE)) {
+    configPath <- datarobot:::GetDefaultConfigPath()
+    utils::file.edit(configPath)
+    datarobot::ConnectToDataRobot(configPath = configPath)
+    message("Next time use datarobot::EditConfig()")
+  } else {
+    warning("datarobot isn't loaded, using default")
+    configPath <- file.path(Sys.getenv("HOME"), ".config", "datarobot", "drconfig.yaml")
+    utils::file.edit(configPath)
+    message("Changes will take effect the next time you attach datarobot")
+  }
+}
+
+# TODO move this to the e2e-tests project .Rprofile
+configure_e2e <- function() {
+  require(datarobot) # this won't run without dr installed
+  # restart R session
+  install.packages(c('testthat', 'memoise', 'data.table', 'devtools'))
+  library(testthat)
+  library(memoise)
+  library(data.table)
+  library(devtools)
+}
