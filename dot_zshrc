@@ -32,3 +32,7 @@ if [[ $(command -v starship) ]] then
   # You may still need to add this at the end of .zshrc for it to work
   eval "$(starship init zsh)"
 fi
+
+if [[ $(command -v thefuck) ]] then
+  eval "$(thefuck --alias)"
+fi
