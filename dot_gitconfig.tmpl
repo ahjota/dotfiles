@@ -19,7 +19,9 @@
 [branch]
         autosetuprebase = always
 [credential]
+{{ if eq .chezmoi.os "darwin" }}
         helper = osxkeychain
+{{ end }}
 [checkout]
         defaultRemote = origin
 [alias]
