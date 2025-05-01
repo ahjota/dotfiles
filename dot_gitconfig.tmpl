@@ -1,9 +1,26 @@
 [user]
 	name = AJ Alon
 	email = {{ .email }}
+[init]
+        defaultBranch = main
 [pull]
 	rebase = true
 [push]
 	default = current
 [core]
 	editor = vim
+[push]
+        default = current
+        gpgSign = if-asked
+        autoSetupRemote = true
+[stash]
+        showPatch = true
+[rebase]
+        missingCommitsCheck = error
+        autoSquash = true
+[branch]
+        autosetuprebase = always
+[credential]
+        helper = osxkeychain
+[checkout]
+        defaultRemote = origin
