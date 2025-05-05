@@ -1,4 +1,6 @@
-{{- $email := promptStringOnce . "email" "Email address" -}}
+{{ $email := promptStringOnce . "email" "Email address" }}
+{{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }} 
 
 [data]
     email = {{ $email | quote }}
+    dr = {{ $isDRDevMachine }}
