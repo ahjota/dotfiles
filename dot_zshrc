@@ -20,6 +20,7 @@ then
 fi
 
 if [[ -d $HOME/.atuin/bin ]] then
+  # Add atuin to the path, and init shell plugin
   . "$HOME/.atuin/bin/env"
   eval "$(atuin init zsh)"
 fi
