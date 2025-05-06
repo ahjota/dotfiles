@@ -31,3 +31,10 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply $GITHUB_USERNAME
 ```
 
 This is a more interesting problem to me, keeping my dotfiles synced. I know a lot of folks use symlinks, but I am intrigued by the declarative template approach.
+
+[atuin](https://atuin.sh)
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
+```
+
+This installs atuin in `~/.atuin/bin`.
