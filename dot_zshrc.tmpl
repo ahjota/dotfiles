@@ -42,9 +42,9 @@ if [[ $(command -v thefuck) ]] then
   eval "$(thefuck --alias)"
 fi
 
-{{ if eq .dr "True" }}
+{{- if eq .dr "true" }}
 # TODO Why do I have this?
 . "$HOME/.local/bin/env"
 
 [ -f ~/.quantumrc ] && source ~/.quantumrc
-{{ end }}
+{{- end }}
