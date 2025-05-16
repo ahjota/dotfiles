@@ -5,8 +5,12 @@ bindkey -v
 
 ## Env Vars
 # TODO Move this to their own shell file
+export WORKSPACE=${HOME}/workspace
+# TODO Remove this as I am now using chezmoi for dotfiles
 export AJ_CONFIG=${HOME}/workspace/dev
+# homebrew is great but is actively hostile sometimes
 export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_INSTALL_CLEANUP=1
 
 ## Aliases
 # TODO Move to their own file
