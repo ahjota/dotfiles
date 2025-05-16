@@ -42,7 +42,7 @@ if [[ $(command -v thefuck) ]] then
   eval "$(thefuck --alias)"
 fi
 
-{{- if eq .dr "true" }}
+{{- if .dr }}
 # TODO Why do I have this?
 . "$HOME/.local/bin/env"
 
