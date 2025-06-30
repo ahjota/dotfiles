@@ -17,6 +17,18 @@ export HOMEBREW_NO_INSTALL_CLEANUP=1
 alias g="git"
 alias ll="ls -al"
 alias cm="chezmoi"
+alias edit="open"
+
+if type zed %>/dev/null
+then
+  export EDITOR="zed --wait"
+elif type code %>/dev/null
+then
+  export EDITOR="code --wait"
+elif type vim %>/dev/null
+then
+  export EDITOR="vim"
+fi
 
 if type brew &>/dev/null
 then
