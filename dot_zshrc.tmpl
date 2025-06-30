@@ -47,6 +47,9 @@ fi
 . "$HOME/.local/bin/env"
 
 [ -f ~/.quantumrc ] && source ~/.quantumrc
+
+# set up GPG, because I need to use it for the datarobot github org
+export GPG_TTY=$(tty)
 {{- end }}
 
 if type pyenv &>/dev/null
