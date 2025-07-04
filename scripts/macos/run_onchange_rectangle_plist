@@ -1,0 +1,7 @@
+#!/usr/bin/osascript
+
+# Rectangle needs to reload AppDefaults
+# however as of v88 (94) there is no 'restart' variable
+tell application "Rectangle" to quit
+delay 1
+tell application "Rectangle" to activate
