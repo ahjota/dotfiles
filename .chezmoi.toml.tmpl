@@ -1,5 +1,5 @@
 {{ $email := promptStringOnce . "email" "Email address" }}
-{{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }} 
+{{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }}
 
 [data]
     email = {{ $email | quote }}
@@ -9,6 +9,9 @@
     sans-serif = '"Avenir Next","Avenir","Helvetica Neue","Helvetica",sans-serif"'
     serif = '"Georgia",serif'
     mono = '"Fira Code Mono"'
+
+[diff]
+    exclude = ["scripts"]
 
 [[textconv]]
 pattern = "**/*.plist"
