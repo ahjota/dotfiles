@@ -9,3 +9,8 @@
     sans-serif = '"Avenir Next","Avenir","Helvetica Neue","Helvetica",sans-serif"'
     serif = '"Georgia",serif'
     mono = '"Fira Code Mono"'
+
+[[textconv]]
+pattern = "**/*.plist"
+command = "plutil"
+args = ["-convert", "xml1", "-o", "-", "-"]
