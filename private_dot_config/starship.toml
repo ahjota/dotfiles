@@ -1,0 +1,66 @@
+format = """
+╭ $all${custom.git_scope}$fill${custom.drconfig}\
+$line_break\
+╰─$jobs\
+$battery\
+$container\
+$shell\
+$status\
+$character"""
+
+right_format = """
+$time\
+$shlvl"""
+
+[username]
+show_always = false
+
+[shell]
+disabled = false
+
+[shlvl]
+disabled = false
+symbol = " "
+
+[status]
+disabled = false
+
+[git_status]
+# I've disabled git_status because it's slow for large repos, like the monorepo
+# at work. I'd love to be able to disable it conditionally, but that does not
+# exist in starship right now.
+disabled = true
+
+[git_metrics]
+disabled = false
+
+[git_branch]
+ignore_branches = ['master', 'main']
+
+[[battery.display]]
+threshold = 10
+style = "bold red"
+
+[[battery.display]]
+threshold = 30
+style = "bold yellow"
+
+[custom.drconfig]
+command = "yq '.endpoint' ~/.config/datarobot/drconfig.yaml | awk -F'/api/v2' '{print $1}' | awk -F'//' '{print $2}' | sed 's/datarobot.com/dr/g'"
+format = " ﮧ $output"
+description = "The contents of drconfig.yaml"
+shell = ["dash", "-eu"]
+when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
+
+[custom.git_scope]
+# https://github.com/starship/starship/discussions/1252#discussioncomment-2461567
+command = '''
+printf "%s (%s)" \
+  "$(if [ -n "$GIT_AUTHOR_EMAIL" ]; then echo "$GIT_AUTHOR_EMAIL"; else git config --get user.email; fi)" \
+  "$(if [ -n "$GIT_AUTHOR_NAME" ]; then echo "$GIT_AUTHOR_NAME"; else git config --get user.name; fi)"
+'''
+description = 'The currently configured Git user.{email,name}'
+format = 'as [$output]($style) '
+style = 'blue bold'
+shell = ["dash", "-e"]
+when = 'git rev-parse --is-inside-work-tree'
