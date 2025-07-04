@@ -46,8 +46,11 @@ if [[ -d $HOME/.atuin/bin ]] then
   eval "$(atuin init zsh)"
 fi
 
-source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh
-antidote load
+if type antidote &>/dev/null
+then
+  source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh
+  antidote load
+fi
 
 if [[ $(command -v starship) ]] then
   export STARSHIP_CONFIG=${AJ_CONFIG}/config/starship.toml
