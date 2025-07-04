@@ -6,6 +6,9 @@
 // To see all of Zed's default settings without changing your
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
+//
+// AJ! Don't forget to update your chezmoi template! Run
+// `cm edit ~/.config/zed/settings.json` and commit changes.
 {
   "theme": {
     "mode": "system",
@@ -13,16 +16,14 @@
     "dark": "One Dark"
   },
   "agent": {
-    "model_parameters": [],
+    "version": "2",
     "default_model": {
       "provider": "copilot_chat",
       "model": "claude-3.7-sonnet"
     },
-    "version": "2"
+    "model_parameters": [],
   },
   "base_keymap": "VSCode",
-  "ui_font_family": "FiraCode Nerd Font Propo",
-  "ui_font_fallbacks": ["Zed Plex Sans"],
   "ui_font_size": 16,
   "buffer_font_family": "FiraCode Nerd Font Mono",
   "buffer_font_fallbacks": ["Zed Plex Mono"],
