@@ -22,6 +22,9 @@ alias g="git"
 alias ll="ls -al"
 alias cm="chezmoi"
 alias edit="open"
+alias k="kubectl"
+alias t="terraform"
+alias d="docker"
 
 ## Default Editor
 if type zed %>/dev/null
@@ -35,11 +38,13 @@ then
   export EDITOR="vim"
 fi
 
+# Homebrew: The Missing Package Manager (https://brew.sh)
 if type brew &>/dev/null
 then
   FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
 fi
 
+# Atuin: Magical Shell History (https://atuin.sh)
 if [[ -d $HOME/.atuin/bin ]] then
   # Add atuin to the path, and init shell plugin
   . "$HOME/.atuin/bin/env"
@@ -52,6 +57,7 @@ then
   antidote load
 fi
 
+# Starship: Cross-Shell Prompt (https://starship.rs/)
 if [[ $(command -v starship) ]] then
   # You may still need to add this at the end of .zshrc for it to work
   eval "$(starship init zsh)"
