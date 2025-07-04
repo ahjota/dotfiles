@@ -11,8 +11,9 @@
 README.md
 LICENSE
 
-# Ignore non-OS files.
+# Ignore non-macOS files.
 {{ if ne .chezmoi.os "darwin" -}}
+Library/Preferences
 {{- end }}
 
 # ignore non-Windows files.
