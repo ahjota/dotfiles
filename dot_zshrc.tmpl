@@ -4,10 +4,14 @@ setopt autocd
 bindkey -v
 
 ## Env Vars
-# TODO Move this to their own shell file
+# TODO Move env vars to their own shell file
 export WORKSPACE=${HOME}/workspace
-# TODO Remove this as I am now using chezmoi for dotfiles
+
+# TODO Because you are now using chezmoi for dotfiles,
+# either replace usage of AJ_CONFIG with XDG_CONFIG_HOME, or
+# remove it entirely and rely on chezmoi templating
 export AJ_CONFIG=${HOME}/workspace/dev
+
 # homebrew is great but is actively hostile sometimes
 export HOMEBREW_NO_AUTO_UPDATE=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
@@ -19,6 +23,7 @@ alias ll="ls -al"
 alias cm="chezmoi"
 alias edit="open"
 
+## Default Editor
 if type zed %>/dev/null
 then
   export EDITOR="zed --wait"
