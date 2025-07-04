@@ -27,13 +27,13 @@ alias t="terraform"
 alias d="docker"
 
 ## Default Editor
-if type zed %>/dev/null
+if type zed &>/dev/null
 then
   export EDITOR="zed --wait"
-elif type code %>/dev/null
+elif type code &>/dev/null
 then
   export EDITOR="code --wait"
-elif type vim %>/dev/null
+elif type vim &>/dev/null
 then
   export EDITOR="vim"
 fi
