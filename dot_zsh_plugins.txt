@@ -1,5 +1,9 @@
 # .zsh_plugins.txt - comments begin with "#"
 
+# This is used by antidote. Do you have it?
+# brew install antidote
+# ref: https://antidote.sh/
+
 # Basic Zsh plugins are defined in user/repo format
 zsh-users/zsh-autosuggestions
 zdharma-continuum/fast-syntax-highlighting
