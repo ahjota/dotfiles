@@ -5,7 +5,7 @@
 
 # Basic Zsh plugins are defined in user/repo format
 zsh-users/zsh-autosuggestions
-zdharma-continuum/fast-syntax-highlighting
+zdharma-continuum/fast-syntax-highlighting kind:defer
 
 agkozak/zsh-z
 mattmc3/ez-compinit
@@ -14,4 +14,4 @@ mattmc3/ez-compinit
 jeffreytse/zsh-vi-mode
 
 # replace aliases with abbreviations.
-#olets/zsh-abbr
+#olets/zsh-abbr kind:defer
