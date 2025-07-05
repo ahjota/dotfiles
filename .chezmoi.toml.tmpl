@@ -1,5 +1,5 @@
 {{ $email := promptStringOnce . "email" "Email address" }}
-{{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }} 
+{{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }}
 
 [data]
     email = {{ $email | quote }}
@@ -9,3 +9,9 @@
     sans-serif = '"Avenir Next","Avenir","Helvetica Neue","Helvetica",sans-serif"'
     serif = '"Georgia",serif'
     mono = '"Fira Code Mono"'
+
+[[textconv]]
+# https://www.chezmoi.io/user-guide/tools/diff/#show-human-friendly-diffs-for-binary-files
+pattern = "**/*.plist"
+command = "plutil"
+args = ["-convert", "xml1", "-o", "-", "-"]
