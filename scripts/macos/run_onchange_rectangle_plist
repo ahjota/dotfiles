@@ -4,6 +4,8 @@
 
 # Rectangle needs to reload AppDefaults
 # however as of v88 (94) there is no 'restart' variable
-tell application "Rectangle" to quit
-delay 1
-tell application "Rectangle" to activate
+if application "com.knollsoft.Rectangle" is running then
+    tell application "com.knollsoft.Rectangle" to quit
+    delay 1
+    tell application "com.knollsoft.Rectangle" to activate
+end if
