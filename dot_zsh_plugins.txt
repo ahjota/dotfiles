@@ -9,3 +9,9 @@ zdharma-continuum/fast-syntax-highlighting
 
 agkozak/zsh-z
 mattmc3/ez-compinit
+
+# normal vi mode in ZSH sucks.
+jeffreytse/zsh-vi-mode
+
+# replace aliases with abbreviations.
+#olets/zsh-abbr
