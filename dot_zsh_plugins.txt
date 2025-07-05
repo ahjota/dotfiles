@@ -1,0 +1,20 @@
+# .zsh_plugins.txt - comments begin with "#"
+
+# This is used by antidote. Do you have it?
+# ref: https://antidote.sh/
+
+# Basic Zsh plugins are defined in user/repo format
+zsh-users/zsh-autosuggestions
+zdharma-continuum/fast-syntax-highlighting kind:defer
+
+agkozak/zsh-z
+mattmc3/ez-compinit
+
+# normal vi mode in ZSH sucks.
+jeffreytse/zsh-vi-mode
+
+# replace aliases with abbreviations.
+#olets/zsh-abbr kind:defer
+
+# clear history when you go $HOME.
+givensuman/zsh-allclear

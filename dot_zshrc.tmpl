@@ -51,11 +51,8 @@ if [[ -d $HOME/.atuin/bin ]] then
   eval "$(atuin init zsh)"
 fi
 
-if type antidote &>/dev/null
-then
-  source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh
-  antidote load
-fi
+# Antidote: the cure to slow zsh plugin management (https://antidote.sh)
+source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh &>/dev/null && antidote load
 
 # Starship: Cross-Shell Prompt (https://starship.rs/)
 if [[ $(command -v starship) ]] then
