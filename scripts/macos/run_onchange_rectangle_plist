@@ -1,5 +1,7 @@
 #!/usr/bin/osascript
 
+# plist hash: {{ include "Library/Preferences/com.knollsoft.Rectangle.plist" | sha256sum }}
+
 # Rectangle needs to reload AppDefaults
 # however as of v88 (94) there is no 'restart' variable
 tell application "Rectangle" to quit
