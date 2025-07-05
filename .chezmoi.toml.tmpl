@@ -2,13 +2,13 @@
 {{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }}
 
 [data]
-    email = {{ $email | quote }}
-    dr = {{ $isDRDevMachine }}
+email = {{ $email | quote }}
+dr = {{ $isDRDevMachine }}
 
 [data.fonts]
-    sans-serif = '"Avenir Next","Avenir","Helvetica Neue","Helvetica",sans-serif"'
-    serif = '"Georgia",serif'
-    mono = '"Fira Code Mono"'
+sans-serif = '"Avenir Next","Avenir","Helvetica Neue","Helvetica",sans-serif"'
+serif = '"Georgia",serif'
+mono = '"Fira Code Mono"'
 
 [[textconv]]
 # https://www.chezmoi.io/user-guide/tools/diff/#show-human-friendly-diffs-for-binary-files
