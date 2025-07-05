@@ -15,3 +15,6 @@ jeffreytse/zsh-vi-mode
 
 # replace aliases with abbreviations.
 #olets/zsh-abbr kind:defer
+
+# clear history when you go $HOME.
+givensuman/zsh-allclear
