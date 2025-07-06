@@ -1,0 +1,15 @@
+# This is the user-level configuration file for uv.
+
+# If project-, user-, and system-level configuration files are found,
+# the settings will be merged, with project-level configuration taking
+# precedence over the user-level configuration, and user-level
+# configuration taking precedence over the system-level configuration.
+
+# Settings provided via environment variables take precedence over
+# persistent configuration, and settings provided via the command line
+# take precedence over both.
+
+# Allow the same major version, similar to the semver caret,
+# e.g., >=1.2.3, <2.0.0
+
+add-bounds = "major"
