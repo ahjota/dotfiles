@@ -1,22 +1,15 @@
 # .zsh_plugins.txt - comments begin with "#"
 
-<<<<<<< HEAD
 # This is used by antidote. Do you have it?
 # ref: https://antidote.sh/
 
 # Basic Zsh plugins are defined in user/repo format
 zsh-users/zsh-autosuggestions
 zdharma-continuum/fast-syntax-highlighting kind:defer
-=======
-# Basic Zsh plugins are defined in user/repo format
-zsh-users/zsh-autosuggestions
-zdharma-continuum/fast-syntax-highlighting
->>>>>>> 3152941 (rename file)
 
 agkozak/zsh-z
 mattmc3/ez-compinit
 
-<<<<<<< HEAD
 # normal vi mode in ZSH sucks.
 jeffreytse/zsh-vi-mode
 
@@ -25,7 +18,3 @@ jeffreytse/zsh-vi-mode
 
 # clear history when you go $HOME.
 givensuman/zsh-allclear
-=======
-# The following is replaced by atuin
-# zsh-users/zsh-history-substring-search
->>>>>>> 3152941 (rename file)
