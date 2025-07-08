@@ -1,0 +1,4 @@
+# direnv configuration is VERY likely going to be machine specific
+#
+.envrc
+
