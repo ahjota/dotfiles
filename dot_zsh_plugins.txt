@@ -21,3 +21,6 @@ givensuman/zsh-allclear
 
 # uv auto-activate venvs in cwd.
 matthiasha/zsh-uv-env
+
+# direnv support. don't need to integrate in zshrc if this is installed.
+ohmyzsh/ohmyzsh path:plugins/direnv
