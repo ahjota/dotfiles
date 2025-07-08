@@ -1,9 +1,6 @@
 [user]
 	name = AJ Alon
 	email = {{ .email }}
-{{ if .dr }}
-        signingkey = D1D5F0D0EAED84B2
-{{ end }}
 [core]
         editor = zed --wait
 [init]
@@ -83,9 +80,3 @@
     squash = "!f() { git reset $(git merge-base ${1-master} $(git rev-parse --abbrev-ref HEAD)); }; f"
 
     branchdate = for-each-ref --count=10 --sort=-committerdate refs/heads/ --format="%(authordate:short)%09%(objectname:short)%09%1B[0;33m%(refname:short)%1B[m%09"
-{{ if .dr }}
-[commit]
-        gpgsign = true
-[tag]
-        gpgSign = true
-{{ end }}
