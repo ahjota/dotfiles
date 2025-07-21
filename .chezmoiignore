@@ -19,3 +19,8 @@ Library/Preferences
 # ignore non-Windows files.
 {{ if ne .chezmoi.os "windows" -}}
 {{- end }}
+
+# Ignore work files.
+{{- if not .dr }}
+workspace/DataRobot
+{{- end }}

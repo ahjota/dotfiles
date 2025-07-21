@@ -1,0 +1,5 @@
+# working in DataRobot always needs this
+export PYTHONPATH=`pwd`
+
+# set virtualenv to the latest DataRobot
+export VIRTUAL_ENV=~/.virtualenvs/datarobot
