@@ -87,14 +87,3 @@ configure_dr <- function() {
     message("Changes will take effect the next time you attach datarobot")
   }
 }
-
-# TODO move this to the e2e-tests project .Rprofile
-configure_e2e <- function() {
-  require(datarobot) # this won't run without dr installed
-  # restart R session
-  install.packages(c('testthat', 'memoise', 'data.table', 'devtools'))
-  library(testthat)
-  library(memoise)
-  library(data.table)
-  library(devtools)
-}
