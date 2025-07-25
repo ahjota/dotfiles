@@ -1,5 +1,5 @@
 format = """
-╭ $all${custom.git_scope}$fill${custom.drconfig}\
+╭ $all${custom.git_scope}$fill$kubernetes${custom.drconfig}\
 $line_break\
 ╰─$jobs\
 $battery\
@@ -12,13 +12,31 @@ right_format = """
 $time\
 $shlvl"""
 
+[time]
+# what time is it?
+disabled = true
+
 [username]
+# who am I?
 show_always = false
 
 [shell]
+# am I in a shell that isn't zsh?
+zsh_indicator = ""
 disabled = false
 
+[direnv]
+# what's my direnv status?
+disabled = false
+symbol = " "
+allowed_msg = "a"
+not_allowed_msg = "na"
+denied_msg = "x"
+loaded_msg = "l"
+unloaded_msg = "u"
+
 [shlvl]
+# how many shell levels deep am I?
 disabled = false
 symbol = " "
 
@@ -37,17 +55,40 @@ disabled = false
 [git_branch]
 ignore_branches = ['master', 'main']
 
+[hostname]
+# if I'm on SSH, what's my hostname?
+ssh_only = true
+
+[localip]
+# if I'm on SSH, what's my local IP address?
+disabled = false
+ssh_only = true
+
+[kubernetes]
+# am I in a Kubernetes cluster?
+disabled = false
+# but only if any of the following conditions are met
+detect_files = ["Tiltfile"]
+detect_folders = ["charts"]
+
 [[battery.display]]
+# when the battery is at 10%, display the icon in red
 threshold = 10
 style = "bold red"
 
 [[battery.display]]
+# when the battery is at 30%, display the icon in yellow
 threshold = 30
 style = "bold yellow"
 
 [custom.drconfig]
+# quickly show the datarobot endpoint from drconfig.yaml
+# 🤖 / robot face / U+1F916 / Apple Color Emoji required
+# 󱜙 / md-robot_happy / U+F1719 / Nerd Font required
+# 🗿 / moyai / U+1F5FF / Apple Color Emoji required
+# 👾 / alien_monster / U+1F47E / Apple Color Emoji required
 command = "yq '.endpoint' ~/.config/datarobot/drconfig.yaml | awk -F'/api/v2' '{print $1}' | awk -F'//' '{print $2}' | sed 's/datarobot.com/dr/g'"
-format = " ﮧ $output"
+format = "👾 $output"
 description = "The contents of drconfig.yaml"
 shell = ["dash", "-eu"]
 when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
