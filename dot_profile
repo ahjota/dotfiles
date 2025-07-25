@@ -1,0 +1,5 @@
+# This file is sourced by the shell at login.
+# atuin set this up so that I can have access
+# to my history outside of zsh.
+. "$HOME/.atuin/bin/env"
+. "$HOME/.local/bin/env"
