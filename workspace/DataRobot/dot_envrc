@@ -1,5 +1,9 @@
 # working in DataRobot always needs this
-export PYTHONPATH=`pwd`
+PYTHONPATH=$(pwd)
+export PYTHONPATH
+
+type workon > /dev/null || echo "workon not found, please install virtualenvwrapper"
 
 # set virtualenv to the latest DataRobot
-export VIRTUAL_ENV=~/.virtualenvs/datarobot
+# TODO this doesn't actually work, I need to use workon or maybe something in QUANTUM
+# export VIRTUAL_ENV=~/.virtualenvs/datarobot
