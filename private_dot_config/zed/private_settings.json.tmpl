@@ -10,16 +10,18 @@
 // AJ! Don't forget to update your chezmoi template! Run
 // `cm edit ~/.config/zed/settings.json` and commit changes.
 {
+  "edit_predictions": {
+    "provider": "copilot",
+  },
   "theme": {
     "mode": "system",
     "light": "Ayu Light",
-    "dark": "One Dark"
+    "dark": "One Dark",
   },
   "agent": {
-    "version": "2",
     "default_model": {
       "provider": "copilot_chat",
-      "model": "claude-3.7-sonnet"
+      "model": "claude-3.7-sonnet",
     },
     "model_parameters": [],
   },
@@ -31,13 +33,9 @@
   "buffer_font_fallbacks": ["Zed Plex Mono"],
   "buffer_font_size": 16,
   // Configs for font to use for rendering terminal
-  "features": {
-    // Use copilot provider to maintain consistency with work
-    "edit_prediction_provider": "copilot"
-  },
   // Soft wrap lines at the preferred line length or the editor width (whichever is smaller).
   "soft_wrap": "bounded",
   "terminal": {
     "font_size": 12,
-  }
+  },
 }
