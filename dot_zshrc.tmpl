@@ -25,6 +25,7 @@ alias edit="open"
 alias k="kubectl"
 alias t="terraform"
 alias d="docker"
+alias exif-histogram="exiftool -r . | grep '^Focal Length.*(35 mm equivalent' | awk -F ': ' '{print $3}' | awk '{print $1}' | sort --human-numeric-sort | uniq -c"
 
 ## Default Editor
 if type zed &>/dev/null
