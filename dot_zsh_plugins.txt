@@ -18,7 +18,7 @@ agkozak/zsh-z
 mattmc3/ez-compinit
 
 # normal vi mode in ZSH sucks.
-jeffreytse/zsh-vi-mode
+jeffreytse/zsh-vi-mode kind:defer
 
 # replace aliases with abbreviations.
 #olets/zsh-abbr kind:defer
