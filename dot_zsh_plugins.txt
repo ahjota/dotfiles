@@ -4,10 +4,17 @@
 # ref: https://antidote.sh/
 
 # Basic Zsh plugins are defined in user/repo format
+
+# suggest commands from history as you type.
 zsh-users/zsh-autosuggestions
+
+# fast syntax highlighting for commands.
 zdharma-continuum/fast-syntax-highlighting kind:defer
 
+# frecent directory jumping (z command).
 agkozak/zsh-z
+
+# faster completion initialization.
 mattmc3/ez-compinit
 
 # normal vi mode in ZSH sucks.
