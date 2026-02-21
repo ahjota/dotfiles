@@ -20,4 +20,7 @@ jeffreytse/zsh-vi-mode
 givensuman/zsh-allclear
 
 # uv auto-activate venvs in cwd.
-matthiasha/zsh-uv-env
+matthiasha/zsh-uv-env kind:defer
+
+# auto-switch node.
+gretzky/n.zsh kind:defer
