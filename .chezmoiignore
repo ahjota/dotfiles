@@ -23,4 +23,5 @@ Library/Preferences
 # Ignore work files.
 {{- if not .dr }}
 workspace/DataRobot
+dot_claude/skills/tech-debt-epic
 {{- end }}
