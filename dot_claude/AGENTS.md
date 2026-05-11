@@ -52,4 +52,4 @@ BREAKING CHANGE: API endpoints have been renamed
 ## Output Formats
 
 - BUGBOT.md and `.cursor/` rule files should be formatted as Cursor bugbot reference guides (machine-readable rule files), NOT human-readable checklists
-- When saving analysis/specs, default to Confluence (not Claude.ai projects) unless told otherwise.
+- When saving analysis/specs, default to {{ .defaultOutputFormat }} unless told otherwise.
