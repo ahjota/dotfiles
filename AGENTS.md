@@ -2,6 +2,10 @@
 
 Global guidance for working with coding agents (Droid, Claude Code, OpenCode) across all projects.
 
+## Documentation
+
+Always provide in-line comments and docstrings for any code you write or edit.
+
 ## Tool-Specific Guidance
 
 ### Handling Redacted Output in Read Tool
