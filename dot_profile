@@ -3,3 +3,8 @@
 # to my history outside of zsh.
 . "$HOME/.atuin/bin/env"
 . "$HOME/.local/bin/env"
+
+# LM Studio CLI (lms): only add to PATH if installed
+if [ -d "$HOME/.lmstudio/bin" ]; then
+  export PATH="$PATH:$HOME/.lmstudio/bin"
+fi
