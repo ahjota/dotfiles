@@ -96,3 +96,8 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # Added by Cargo
 export PATH="$HOME/.cargo/bin:$PATH"
+
+# LM Studio CLI (lms): only add to PATH if installed
+if [[ -d "$HOME/.lmstudio/bin" ]] then
+  export PATH="$PATH:$HOME/.lmstudio/bin"
+fi
