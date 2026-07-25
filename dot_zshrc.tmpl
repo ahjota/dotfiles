@@ -50,6 +50,7 @@ if [[ -d $HOME/.atuin/bin ]] then
   # Add atuin to the path, and init shell plugin
   . "$HOME/.atuin/bin/env"
   eval "$(atuin init zsh)"
+  eval "$(atuin gen-completions --shell zsh)"
 fi
 
 # Antidote: the cure to slow zsh plugin management (https://antidote.sh)
