@@ -21,5 +21,6 @@
   "code_formatter": "styler",
   "python_type": "system",
   "python_version": "3.13.3",
-  "python_path": "/opt/homebrew/bin/python3"
+  "python_path": "/opt/homebrew/bin/python3",
+  "show_terminal_tab": false
 }
