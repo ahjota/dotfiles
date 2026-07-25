@@ -6,6 +6,7 @@ $battery\
 $container\
 $shell\
 $status\
+$time\
 $character"""
 
 right_format = """
@@ -105,3 +106,7 @@ format = 'as [$output]($style) '
 style = 'blue bold'
 shell = ["dash", "-e"]
 when = 'git rev-parse --is-inside-work-tree'
+
+[cmd_duration]
+min_time = 500
+show_milliseconds = true
