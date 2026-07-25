@@ -25,7 +25,9 @@ alias edit="open"
 alias k="kubectl"
 alias t="terraform"
 alias d="docker"
+{{- if not .dr }}
 alias exif-histogram="exiftool -r . | grep '^Focal Length.*(35 mm equivalent' | awk -F ': ' '{print $3}' | awk '{print $1}' | sort --human-numeric-sort | uniq -c"
+{{- end }}
 
 ## Default Editor
 if type zed &>/dev/null
@@ -104,10 +106,14 @@ autoload -U compinit && compinit
 export N_PREFIX="$HOME/n"; [[ :$PATH: == *":$N_PREFIX/bin:"* ]] || PATH+=":$N_PREFIX/bin"
 
 # Added by Factory Desktop
-export PATH="$HOME/.local/bin:$PATH"
+if [[ -d "/Applications/Factory.app" ]] then
+  export PATH="$HOME/.local/bin:$PATH"
+fi
 
 # Added by Cargo
-export PATH="$HOME/.cargo/bin:$PATH"
+if [[ -d "$HOME/.cargo/bin" ]] then
+  export PATH="$HOME/.cargo/bin:$PATH"
+fi
 
 # LM Studio CLI (lms): only add to PATH if installed
 if [[ -d "$HOME/.lmstudio/bin" ]] then
