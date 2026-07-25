@@ -1,0 +1,52 @@
+#!/bin/sh
+# git status, but falls back to a one-line-per-worktree summary when plain
+# `git status` can't run (e.g. "fatal: this operation must be run in a
+# worktree", which happens e.g. when cwd is the bare .git dir of a repo with
+# multiple linked worktrees).
+#
+# Normal case: behaves exactly like `git status -sb -uall`.
+# Fallback case: one line per worktree, sorted dirty-first. Paths are shown
+# relative to the current directory.
+
+out=$(git status -sb -uall 2>&1)
+rc=$?
+
+if [ "$rc" -eq 0 ]; then
+	printf '%s\n' "$out"
+	exit 0
+fi
+
+if ! printf '%s' "$out" | grep -q 'must be run in a work'; then
+	# Some other failure (e.g. not a git repo at all) -- surface it as-is.
+	printf '%s\n' "$out" >&2
+	exit "$rc"
+fi
+
+tab=$(printf '\t')
+
+git worktree list --porcelain | awk '/^worktree /{print $2}' | while IFS= read -r wt; do
+	rel=$(perl -MFile::Spec -e 'print File::Spec->abs2rel($ARGV[0])' "$wt")
+
+	if [ ! -d "$wt" ]; then
+		printf '1\t%-60s %-14s %s\n' "$rel" "missing" "(prunable, run: git worktree prune)"
+		continue
+	fi
+
+	# Unset GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE: git sets these for alias
+	# shell commands, and they leak into `-C` invocations otherwise, making
+	# every worktree report the same (wrong) branch/status.
+	env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE \
+		git -C "$wt" status --porcelain=v2 --branch 2>/dev/null |
+		awk -v wt="$rel" '
+			/^# branch\.oid/ { oid = $3 }
+			/^# branch\.head/ { branch = $3 }
+			/^[12u?]/ { dirty++ }
+			END {
+				detached = (branch == "" || branch == "(detached)")
+				dirty_key = dirty ? 0 : 1
+				status = dirty ? dirty" change(s)" : "clean"
+				ref = detached ? "(detached @ " substr(oid, 1, 7) ")" : branch
+				printf "%d\t%-60s %-14s %s\n", dirty_key, wt, status, ref
+			}
+		'
+done | sort -t "$tab" -k1,1n -s | cut -f2-
