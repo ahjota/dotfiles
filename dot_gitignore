@@ -1,3 +1,8 @@
 # ignore .envrc used by direnv
 # as this should always be my own work
 .envrc
+
+# ignore anything in the .aj folder
+.aj
+
+**/.claude/settings.local.json
