@@ -1,0 +1,101 @@
+# MCP Server Setup
+
+Runbook for configuring `~/.factory/mcp.json` on a new machine.
+
+## How `mcp.json` works
+
+- Location: `~/.factory/mcp.json` (user-level config; available in every project).
+- **Factory owns this file.** It is written to by `droid mcp add`, the `/mcp`
+  manager (enable/disable toggles, registry adds), and persistent tool
+  approvals. Droid auto-reloads it on change.
+- It is **deliberately not managed by chezmoi.** Managing it would fight
+  Factory's own writes (every toggle/add would be reverted on
+  `chezmoi apply`) and approvals are per-machine anyway (see below).
+- Config schema and behavior: <https://docs.factory.ai/harness/mcp>
+
+## To set up a new machine
+
+Paste the `mcpServers` entries you want below into `~/.factory/mcp.json`
+(merge under the existing `"mcpServers": { ... }` object). Paths must be
+absolute — Droid does **not** expand `$HOME` in `command`/`args`, only in
+`env`/`headers`/`oauth` fields — so the snippets below use your real home
+directory, already filled in.
+
+> `connectTimeout` (and `timeout`) are **not settable via `droid mcp add`**,
+> which is why this runbook uses paste-ready JSON instead of CLI commands.
+> Use `droid mcp add` only for servers with no special options.
+
+### All machines — gopls (Go language server)
+
+Prerequisite: `gopls` built with MCP support at `~/go/bin/gopls`
+(`go install golang.org/x/tools/gopls@latest`). See `gopls-mcp.md` for usage.
+
+```json
+"gopls": {
+  "command": "{{ .chezmoi.homeDir }}/go/bin/gopls",
+  "args": ["mcp"],
+  "env": {
+    "PATH": "/opt/homebrew/bin:{{ .chezmoi.homeDir }}/go/bin",
+    "GOPATH": "{{ .chezmoi.homeDir }}/go",
+    "GOCACHE": "{{ .chezmoi.homeDir }}/Library/Caches/go-build",
+    "GOMODCACHE": "{{ .chezmoi.homeDir }}/go/pkg/mod"
+  },
+  "connectTimeout": 60000,
+  "disabled": false
+}
+```
+
+Linux note: drop `/opt/homebrew/bin:` from `PATH` (or point it at
+`/home/linuxbrew/.linuxbrew/bin` if you use Linuxbrew), and set `GOCACHE` to
+`{{ .chezmoi.homeDir }}/.cache/go-build` instead of the macOS
+`Library/Caches` path.
+
+### Work machines only — atlassian, chronosphere, chronosphere-docs
+
+```json
+"atlassian": {
+  "type": "http",
+  "url": "https://mcp.atlassian.com/v1/mcp",
+  "disabled": false
+},
+"chronosphere": {
+  "type": "http",
+  "url": "https://datarobot.chronosphere.io/api/mcp/mcp",
+  "disabled": false
+},
+"chronosphere-docs": {
+  "type": "http",
+  "url": "https://docs.chronosphere.io/mcp",
+  "disabled": false
+}
+```
+
+### Optional — agentmemory
+
+Only on machines that have the local `agentmemory` project checked out at
+`~/workspace/agentmemory` (build it first: the `dist/cli.mjs` entrypoint must
+exist).
+
+```json
+"agentmemory": {
+  "command": "node",
+  "args": ["{{ .chezmoi.homeDir }}/workspace/agentmemory/dist/cli.mjs", "mcp"],
+  "env": {
+    "AGENTMEMORY_URL": "http://localhost:3111"
+  }
+}
+```
+
+## After pasting
+
+1. **Authenticate OAuth servers.** `atlassian` (and any other remote server
+   requiring OAuth) shows "needs authentication" until you complete the
+   browser flow: run `droid`, type `/mcp`, and authenticate. OAuth tokens are
+   stored in your system keyring, not in `mcp.json`.
+2. **Re-approve persistent permissions.** Approvals are bound to a stable
+   fingerprint of each server's transport config (command+args, or URL) and
+   are **per-machine** — they do not transfer between machines or from a
+   previous setup. Approve tools on first use, or manage them with
+   `droid mcp permissions list | revoke | clear`.
+3. **Verify:** `droid mcp list` should report each server as `connected`
+   (or `needs authentication` until you finish step 1).
