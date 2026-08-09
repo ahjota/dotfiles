@@ -55,9 +55,11 @@ _droid_smart() {
         dir=$(dirname "$dir")
     done
 
-    # 5. No trusted ancestor → default to ~/scratch
+    # 5. No trusted ancestor → default to scratchpad
+    # Fallback path comes from chezmoi data (chezmoi.toml -> data.scratchpad).
     if [[ -z "$target" ]]; then
-        target=$(realpath "$HOME/scratch" 2>/dev/null || echo "$HOME/scratch")
+        target={{ .scratchpad | quote }}
+        target=$(realpath "$target" 2>/dev/null || echo "$target")
     fi
 
     command droid --cwd "$target" "$@"
