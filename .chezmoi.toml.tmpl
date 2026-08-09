@@ -16,7 +16,7 @@ dr = {{ $isDRDevMachine }}
 iterm2 = {{ $isIterm2Managed }}
 artifactoryHost = {{ $artifactoryHost | quote }}
 # what folder is your scratchpad?
-scratchpad = {{ $scratchpadDir }}
+scratchpad = {{ $scratchpadDir | quote }}
 
 [data.dev]
 java = {{ $isJavaDev }}
