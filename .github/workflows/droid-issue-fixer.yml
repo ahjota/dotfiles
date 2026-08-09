@@ -214,26 +214,33 @@ jobs:
           set -euo pipefail
           droid_exit="${{ steps.droid.outputs.droid_exit }}"
 
-          # Extract the result text from JSON output for signature matching.
+          # Extract the result text and is_error flag from JSON output.
           result_text=""
+          is_error="false"
           if [ -f /tmp/droid-out.json ]; then
             result_text=$(jq -r '.result // ""' /tmp/droid-out.json 2>/dev/null || echo "")
+            is_error=$(jq -r '.is_error // false' /tmp/droid-out.json 2>/dev/null || echo "false")
           fi
 
-          # Auth/quota/billing signatures → quiet green exit.
-          quiet_signatures='Authentication failed|FACTORY_API_KEY|insufficient|quota|credit|limit exceeded|402|403|429|billing|plan limit'
-          if echo "$result_text" | grep -iqE "$quiet_signatures"; then
-            echo "::warning::Droid exec hit an auth/quota/billing limit — skipping quietly."
-            {
-              echo "## Droid Issue Fixer — quiet skip"
-              echo ""
-              echo "Droid exec returned a quota/auth/billing error and was skipped quietly."
-              echo ""
-              echo "**Result:** $result_text"
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "quiet_skip=true" >> "$GITHUB_OUTPUT"
-            echo "hard_fail=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          # Auth/quota/billing quiet skip: only when droid exec actually
+          # failed (non-zero exit or is_error=true). A successful run may
+          # mention "FACTORY_API_KEY" or "credit" in its output without
+          # being an auth failure.
+          if [ "$droid_exit" -ne 0 ] || [ "$is_error" = "true" ]; then
+            quiet_signatures='Authentication failed|invalid.*key|insufficient|quota|limit exceeded|402|403|429|billing|plan limit|rate limit'
+            if echo "$result_text" | grep -iqE "$quiet_signatures"; then
+              echo "::warning::Droid exec hit an auth/quota/billing limit — skipping quietly."
+              {
+                echo "## Droid Issue Fixer — quiet skip"
+                echo ""
+                echo "Droid exec returned a quota/auth/billing error and was skipped quietly."
+                echo ""
+                echo "**Result:** $result_text"
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "quiet_skip=true" >> "$GITHUB_OUTPUT"
+              echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           fi
 
           echo "quiet_skip=false" >> "$GITHUB_OUTPUT"
