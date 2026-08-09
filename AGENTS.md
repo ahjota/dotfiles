@@ -50,6 +50,19 @@ When reviewing a PR, checkout the associated branch into the current repo. Use w
 
 This applies to all tools that use the Read capability (Claude Code, Droid CLI, etc.).
 
+### Shell heredocs inside command substitution
+
+Heredocs inside `$(...)` command substitution are fragile in POSIX shell. The closing delimiter and closing `)` can confuse the parser, especially when the heredoc body contains parentheses, backticks, or `$` characters. This affects patterns like `gh pr create --body "$(cat <<'EOF' ... EOF)"`.
+
+**Workaround**: write the content to a temp file first, then pass it by path or flag:
+
+```sh
+gh pr create --body-file /tmp/pr-body.md
+git commit -F /tmp/commit-msg.txt
+```
+
+For git commits specifically, `git commit -F - <<'EOF'` (stdin heredoc without command substitution) works reliably and avoids the issue entirely.
+
 ## Output Formats
 
 - BUGBOT.md and `.cursor/` rule files should be formatted as Cursor bugbot reference guides (machine-readable rule files), NOT human-readable checklists.
