@@ -129,11 +129,13 @@ fi
 
 {{ if eq .chezmoi.os "darwin" -}}
 # The following lines have been added by Docker Desktop to enable Docker CLI completions.
-fpath=(/Users/aj.alon/.docker/completions $fpath)
+# Use $HOME so the path resolves on any macOS account, not just the original
+# developer's username (fixes #69).
+fpath=($HOME/.docker/completions $fpath)
 # End of Docker CLI completions
 
 # Added by dr completion installer
-fpath=(/Users/aj.alon/.zsh/completions $fpath)
+fpath=($HOME/.zsh/completions $fpath)
 {{- end }}
 
 # Added by n-install (see http://git.io/n-install-repo).
