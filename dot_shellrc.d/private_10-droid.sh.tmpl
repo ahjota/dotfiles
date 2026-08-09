@@ -1,6 +1,13 @@
-# ~/.bashrc.d/droid.sh
-# Smart droid wrapper: redirects to nearest trusted folder (or ~/scratch),
-# unless running a subcommand or an explicit --cwd is given.
+# ~/.shellrc.d/droid.sh
+# Smart droid wrapper: redirects to nearest trusted folder (or the
+# configured scratchpad), unless running a subcommand or an explicit
+# --cwd is given.
+#
+# Portability: sourced by both bash (3.2 on stock macOS) and zsh.
+# Avoids associative arrays — bash 3.2 lacks `declare -A` and zsh's
+# hash subscript semantics differ from bash's, which silently broke
+# the trusted-folder lookup. Uses a newline-delimited list + `case`
+# instead, which behaves identically across both shells.
 
 # Known subcommands that should NOT be redirected (always run in CWD)
 _droid_subcommands="exec daemon search find update mcp plugin computer help"
@@ -31,34 +38,41 @@ _droid_smart() {
         fi
     done
 
-    # 3. Read trusted folders from settings.json (canonical paths via realpath)
-    declare -A _trusted=()
+    # 3. Read trusted folders from settings.json into a newline-delimited
+    #    string of canonical (realpath-resolved) absolute paths. Using a
+    #    plain string + `case` match avoids the zsh/bash associative-array
+    #    incompatibilities that previously broke the lookup.
+    local _trusted=""
     if [[ -f "$HOME/.factory/settings.json" ]]; then
-        local t
+        local t rt
         while IFS= read -r t; do
             [[ -z "$t" ]] && continue
-            local rt
             rt=$(realpath "$t" 2>/dev/null || echo "$t")
-            _trusted["$rt"]=1
+            _trusted="${_trusted}${rt}"$'\n'
         done < <(jq -r '.trustedFolders | keys[]?' "$HOME/.factory/settings.json" 2>/dev/null)
     fi
 
-    # 4. Walk up from PWD to find nearest trusted ancestor
+    # 4. Walk up from PWD to find nearest trusted ancestor. `case` on the
+    #    delimited string matches regardless of whether the shell is bash
+    #    or zsh.
     local target=""
     local dir
     dir=$(realpath "$PWD" 2>/dev/null || echo "$PWD")
     while [[ -n "$dir" && "$dir" != "/" ]]; do
-        if [[ -n "${_trusted[$dir]+x}" ]]; then
-            target="$dir"
-            break
-        fi
+        case "${_trusted}" in
+            *"${dir}"$'\n'*) target="$dir"; break ;;
+        esac
         dir=$(dirname "$dir")
     done
 
-    # 5. No trusted ancestor → default to scratchpad
-    # Fallback path comes from chezmoi data (chezmoi.toml -> data.scratchpad).
+    # 5. No trusted ancestor → default to scratchpad.
+    #    Fallback path comes from chezmoi data (chezmoi.toml ->
+    #    data.scratchpad). It may arrive as `~/...` (literal tilde), so
+    #    expand the tilde before resolving realpath; otherwise realpath
+    #    treats `~` as a literal directory name.
     if [[ -z "$target" ]]; then
         target={{ .scratchpad | quote }}
+        target="${target/#\~/$HOME}"
         target=$(realpath "$target" 2>/dev/null || echo "$target")
     fi
 
