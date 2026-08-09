@@ -9,8 +9,6 @@
 > Configs, options, run commands, and  
 > profiles! (Woo-oo!)
 
-I'm in the process of migrating my [old dev repo](https://github.com/ahjota/dev/) here, as well as using some more advanced techniques that I have siloed on my work machine.
-
 ## Supported Shells
 
 - zsh 5.9
