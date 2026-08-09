@@ -68,6 +68,8 @@ brew install yq
 
 Environment Management: direnv
 
+Faster Text Search: ripgrep
+
 ## Fonts
 
 [Fira Code Nerd Font](https://www.nerdfonts.com/font-downloads)
