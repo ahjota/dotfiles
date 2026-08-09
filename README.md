@@ -21,35 +21,38 @@ I'm in the process of migrating my [old dev repo](https://github.com/ahjota/dev/
 
 ### Required
 
-[homebrew](https://brew.sh/)
-
-```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-### Recommended
-
-[antidote](https://getantidote.github.io/)
-
-```sh
-brew install antidote
-```
-
 [chezmoi](https://www.chezmoi.io/)
 
 ```sh
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply $GITHUB_USERNAME
 ```
 
-This is a more interesting problem to me, keeping my dotfiles synced. I know a lot of folks use symlinks, but I am intrigued by the declarative template approach.
+### Recommended
 
-[atuin](https://atuin.sh)
+Package Manager: [Homebrew](https://brew.sh/)
+
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Plugin Manager, zsh: [Antidote](https://getantidote.github.io/)
+
+```sh
+brew install antidote
+```
+
+Prompt: [Starship](https://starship.rs/)
+
+```sh
+curl -sS https://starship.rs/install.sh | sh
+```
+
+Shell History: [Atuin](https://atuin.sh)
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
+atuin setup
 ```
-
-This installs atuin in `~/.atuin/bin`.
 
 ## Fonts
 
@@ -57,14 +60,6 @@ This installs atuin in `~/.atuin/bin`.
 
 ```sh
 brew install font-fira-code-nerd-font
-```
-
-## Prompt
-
-[Starship](https://starship.rs/)
-
-```sh
-curl -sS https://starship.rs/install.sh | sh
 ```
 
 ## App Preferences
