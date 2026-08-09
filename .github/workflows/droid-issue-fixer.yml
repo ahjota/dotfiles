@@ -246,9 +246,13 @@ jobs:
               echo ""
               echo "Droid exec exited with code **$droid_exit**."
               echo ""
-              echo '```'
-              cat /tmp/droid-out.json 2>/dev/null || echo "(no output captured)"
-              echo '```'
+              # Show just the result text, not the full JSON blob.
+              if [ -f /tmp/droid-out.json ]; then
+                jq -r '.result // "(no result text)"' /tmp/droid-out.json 2>/dev/null \
+                  || cat /tmp/droid-out.json
+              else
+                echo "(no output captured)"
+              fi
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0  # Step succeeds so the finish step can salvage; job fails below.
           fi
@@ -319,11 +323,17 @@ jobs:
               echo "Closes #${issue_num}"
               echo ""
             fi
-            echo "### Droid exec output"
+            echo "### Droid exec summary"
             echo ""
-            echo '```json'
-            cat /tmp/droid-out.json 2>/dev/null || echo '(no output)'
-            echo '```'
+            # Extract just the human-readable result text from the JSON,
+            # not the full blob (which includes usage stats, session IDs,
+            # and thousands of chars of noise).
+            if [ -f /tmp/droid-out.json ]; then
+              jq -r '.result // "(no result text)"' /tmp/droid-out.json 2>/dev/null \
+                || echo '(failed to parse droid output)'
+            else
+              echo '(no output captured)'
+            fi
           } > "$pr_body"
 
           # Ensure the `droid` label exists.
