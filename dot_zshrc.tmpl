@@ -82,6 +82,17 @@ fi
 # Antidote: the cure to slow zsh plugin management (https://antidote.sh)
 source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh &>/dev/null && antidote load
 
+# n.zsh plugin -- auto-switch node version when package.json declares one.
+# Disabled upstream because its switch_n chpwd hook calls `exit 1` when
+# `n` isn't installed, which kills the shell on every cd. Removed the
+# antidote entry from .zsh_plugins.txt; now source it conditionally here,
+# gated by `command -v n`. When you fork it, drop the patched file at
+# `~/.local/share/zsh-n-fork/n.plugin.zsh` (or wherever you prefer) and
+# swap the path on the next line.
+if command -v n >/dev/null 2>&1; then
+  zsh-defer source "$HOME/.cache/antidote/github.com/gretzky/n.zsh/n.plugin.zsh"
+fi
+
 # Starship: Cross-Shell Prompt (https://starship.rs/)
 if [[ $(command -v starship) ]] then
   # You may still need to add this at the end of .zshrc for it to work
