@@ -1,0 +1,348 @@
+# .github/workflows/droid-issue-fixer.yml
+# =============================================================================
+# Scheduled + manual GitHub Action that runs `droid exec` headlessly to attempt
+# one open issue from this repo. The agent picks the most tractable issue,
+# implements a fix on a `droid/issue-<N>` branch, and commits it. Scripted
+# steps then push the branch and open a PR.
+#
+# Auth/quota/credit failures are quiet (green run + warning annotation) so a
+# depleted Factory account does not spam your inbox every week.
+# =============================================================================
+name: Droid Issue Fixer
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Mondays at 09:17 UTC (off-the-hour to avoid GitHub cron spikes).
+    - cron: "17 9 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: droid-issue-fixer
+  cancel-in-progress: false
+
+jobs:
+  fix-issue:
+    runs-on: ubuntu-latest
+    # A single droid exec run is usually well under 10 min, but give it room.
+    timeout-minutes: 45
+    steps:
+      # ------------------------------------------------------------------
+      # 1. Checkout
+      # ------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------
+      # 2. Collect open issues + in-flight droid attempts (no installs yet)
+      # ------------------------------------------------------------------
+      - name: Collect open issues and in-flight droid PRs
+        id: collect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Open issues as compact JSON (number, title, body, labels).
+          gh issue list --state open --json number,title,body,labels \
+            > /tmp/open-issues.json
+
+          open_count=$(jq 'length' /tmp/open-issues.json)
+          echo "Open issues found: $open_count"
+
+          if [ "$open_count" -eq 0 ]; then
+            echo "No open issues — nothing to do."
+            echo "has_work=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Existing droid/issue-* branches (in-flight attempts).
+          gh api repos/${{ github.repository }}/branches \
+            --paginate \
+            --jq '[.[] | select(.name | startswith("droid/issue-")) | .name]' \
+            > /tmp/droid-branches.json || echo '[]' > /tmp/droid-branches.json
+
+          # Open PRs whose head branch starts with droid/issue-.
+          gh pr list --state open --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("droid/issue-"))]' \
+            > /tmp/droid-prs.json || echo '[]' > /tmp/droid-prs.json
+
+          # Filter out issues that already have an in-flight droid branch.
+          # Match by issue number embedded in the branch name (droid/issue-<N>).
+          jq -n \
+            --slurpfile issues /tmp/open-issues.json \
+            --slurpfile branches /tmp/droid-branches.json \
+            --slurpfile prs /tmp/droid-prs.json \
+            '{
+              issues: ($issues[0]
+                | map(. as $iss
+                  | ($branches[0] + $prs[0].headRefName)
+                    | any(. as $b | $b | test("issue-" + ($iss.number | tostring) + "[-/]")))
+                  | select(not)) ),
+              inflight: {
+                branches: $branches[0],
+                prs: [$prs[0][].headRefName]
+              }
+            }' > /tmp/actionable.json
+
+          actionable_count=$(jq '.issues | length' /tmp/actionable.json)
+          echo "Actionable issues (excluding in-flight): $actionable_count"
+
+          if [ "$actionable_count" -eq 0 ]; then
+            echo "Every open issue already has an in-flight droid attempt — nothing to do."
+            echo "has_work=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_work=true" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # 3. Install Droid CLI (only when there is actionable work)
+      # ------------------------------------------------------------------
+      - name: Install Droid CLI
+        if: steps.collect.outputs.has_work == 'true'
+        run: |
+          curl -fsSL https://app.factory.ai/cli | sh
+          # The installer places the binary in ~/.local/bin (or similar);
+          # add it to PATH for this and subsequent steps.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # Verify it runs.
+          "$HOME/.local/bin/droid" --version
+
+      # ------------------------------------------------------------------
+      # 4. Install chezmoi (for template validation)
+      # ------------------------------------------------------------------
+      - name: Install chezmoi
+        if: steps.collect.outputs.has_work == 'true'
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          "$HOME/.local/bin/chezmoi" --version
+
+      - name: Write CI chezmoi config
+        if: steps.collect.outputs.has_work == 'true'
+        run: |
+          # Non-interactive config so promptStringOnce/promptBoolOnce never
+          # block. Dummy values — only used for execute-template / dry-run
+          # validation. Using printf instead of a heredoc to avoid YAML
+          # block-scalar indentation conflicts with closing delimiters.
+          mkdir -p "$HOME/.config/chezmoi"
+          printf '%s\n' \
+            '[data]' \
+            'email = "droid-ci@example.com"' \
+            'dr = false' \
+            'iterm2 = false' \
+            'artifactoryHost = ""' \
+            'scratchpad = "/tmp/scratchpad"' \
+            '[data.dev]' \
+            'java = false' \
+            '[data.fonts]' \
+            'sans-serif = "\"Helvetica\",sans-serif"' \
+            'serif = "\"Georgia\",serif"' \
+            'mono = "\"Fira Code Mono\""' \
+            > "$HOME/.config/chezmoi/chezmoi.toml"
+          echo "CHEZMOI_CI_CONFIG=$HOME/.config/chezmoi/chezmoi.toml" >> "$GITHUB_ENV"
+
+      # ------------------------------------------------------------------
+      # 5. Build the prompt file
+      # ------------------------------------------------------------------
+      - name: Build prompt
+        if: steps.collect.outputs.has_work == 'true'
+        run: |
+          # Start with the reusable prompt template, then append the live
+          # issue/PR data as JSON so the agent can pick from current state.
+          cat .github/prompts/fix-issue.md > /tmp/prompt.md
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Actionable issues (JSON)"
+            echo ""
+            echo '```json'
+            cat /tmp/actionable.json | jq '.issues'
+            echo '```'
+            echo ""
+            echo "## In-flight droid attempts (JSON)"
+            echo ""
+            echo '```json'
+            cat /tmp/actionable.json | jq '.inflight'
+            echo '```'
+          } >> /tmp/prompt.md
+
+          echo "Prompt file built ($(wc -l < /tmp/prompt.md) lines)."
+
+      # ------------------------------------------------------------------
+      # 6. Run droid exec (capture exit code, do not fail the step)
+      # ------------------------------------------------------------------
+      - name: Run droid exec
+        id: droid
+        if: steps.collect.outputs.has_work == 'true'
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set +e
+          droid exec \
+            --auto medium \
+            --output-format json \
+            -f /tmp/prompt.md \
+            2>&1 | tee /tmp/droid-out.json
+          droid_exit=$?
+          echo "droid_exit=$droid_exit" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # ------------------------------------------------------------------
+      # 7. Classify the droid exec result
+      # ------------------------------------------------------------------
+      - name: Classify droid result
+        id: classify
+        if: steps.collect.outputs.has_work == 'true'
+        run: |
+          set -euo pipefail
+          droid_exit="${{ steps.droid.outputs.droid_exit }}"
+
+          # Extract the result text from JSON output for signature matching.
+          result_text=""
+          if [ -f /tmp/droid-out.json ]; then
+            result_text=$(jq -r '.result // ""' /tmp/droid-out.json 2>/dev/null || echo "")
+          fi
+
+          # Auth/quota/billing signatures → quiet green exit.
+          quiet_signatures='Authentication failed|FACTORY_API_KEY|insufficient|quota|credit|limit exceeded|402|403|429|billing|plan limit'
+          if echo "$result_text" | grep -iqE "$quiet_signatures"; then
+            echo "::warning::Droid exec hit an auth/quota/billing limit — skipping quietly."
+            {
+              echo "## Droid Issue Fixer — quiet skip"
+              echo ""
+              echo "Droid exec returned a quota/auth/billing error and was skipped quietly."
+              echo ""
+              echo "**Result:** $result_text"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "quiet_skip=true" >> "$GITHUB_OUTPUT"
+            echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "quiet_skip=false" >> "$GITHUB_OUTPUT"
+
+          if [ "$droid_exit" -ne 0 ]; then
+            echo "hard_fail=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Droid exec failed (exit $droid_exit) with an unexpected error."
+            {
+              echo "## Droid Issue Fixer — failed"
+              echo ""
+              echo "Droid exec exited with code **$droid_exit**."
+              echo ""
+              echo '```'
+              cat /tmp/droid-out.json 2>/dev/null || echo "(no output captured)"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0  # Step succeeds so the finish step can salvage; job fails below.
+          fi
+
+          echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # 8. Finish: push branch + open PR (or salvage on error)
+      # ------------------------------------------------------------------
+      - name: Push branch and open PR
+        if: steps.collect.outputs.has_work == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          hard_fail="${{ steps.classify.outputs.hard_fail }}"
+          quiet_skip="${{ steps.classify.outputs.quiet_skip }}"
+
+          if [ "$quiet_skip" = "true" ]; then
+            echo "Quiet skip — not pushing or opening a PR."
+            exit 0
+          fi
+
+          # Look for a droid/issue-* branch the agent created.
+          droid_branch=$(git branch --list 'droid/issue-*' | head -1 | sed 's/^[* ]*//')
+
+          if [ -z "$droid_branch" ]; then
+            # Fallback: if the agent made uncommitted changes on the default
+            # branch, commit them onto a new droid/issue branch.
+            if git diff --quiet && git diff --cached --quiet; then
+              echo "Agent declined — no branch and no changes."
+              {
+                echo "## Droid Issue Fixer — declined"
+                echo ""
+                echo "Droid exec completed successfully but made no changes (declined all issues)."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+
+            # Try to infer the issue number from the prompt data.
+            issue_num=$(jq -r '.issues[0].number' /tmp/actionable.json)
+            droid_branch="droid/issue-${issue_num}-salvage"
+            git checkout -b "$droid_branch"
+            git add -A
+            git commit -m "fix: droid attempt for issue #${issue_num}" || true
+          fi
+
+          # Push the branch.
+          git push origin "$droid_branch"
+
+          # Extract the issue number from the branch name for PR linking.
+          issue_num=$(echo "$droid_branch" | sed -n 's|.*droid/issue-\([0-9]*\).*|\1|p')
+
+          # Build the PR body in a temp file (avoids heredoc-in-substitution
+          # fragility per AGENTS.md).
+          pr_body="/tmp/pr-body.md"
+          {
+            echo "## Automated fix attempt"
+            echo ""
+            if [ "$hard_fail" = "true" ]; then
+              echo "> ⚠️ Droid exec errored during this run. This **draft** PR contains whatever work was salvaged — review carefully."
+              echo ""
+            fi
+            echo "This PR was generated by the \`droid-issue-fixer\` GitHub Action, which runs \`droid exec\` headlessly to attempt an open issue."
+            echo ""
+            if [ -n "$issue_num" ]; then
+              echo "Closes #${issue_num}"
+              echo ""
+            fi
+            echo "### Droid exec output"
+            echo ""
+            echo '```json'
+            cat /tmp/droid-out.json 2>/dev/null || echo '(no output)'
+            echo '```'
+          } > "$pr_body"
+
+          # Ensure the `droid` label exists.
+          gh label create droid --description "PR generated by droid-issue-fixer action" \
+            --color 6B41EF --force 2>/dev/null || true
+
+          # Open the PR (draft if the run errored).
+          pr_flags=(--title "fix: droid attempt for issue #${issue_num:-?}" --body-file "$pr_body" --label droid)
+          if [ "$hard_fail" = "true" ]; then
+            pr_flags+=(--draft)
+          fi
+
+          gh pr create --head "$droid_branch" --base main "${pr_flags[@]}"
+
+          {
+            echo "## Droid Issue Fixer — PR opened"
+            echo ""
+            echo "Branch: \`$droid_branch\`"
+            if [ "$hard_fail" = "true" ]; then
+              echo "Status: **draft** (run errored, salvaged)"
+            else
+              echo "Status: ready for review"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 9. Fail the job if droid exec had an unexpected hard failure
+      # ------------------------------------------------------------------
+      - name: Fail on hard error
+        if: steps.classify.outputs.hard_fail == 'true'
+        run: |
+          echo "Droid exec had an unexpected hard failure — failing the job."
+          exit 1
