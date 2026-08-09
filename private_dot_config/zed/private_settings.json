@@ -1,0 +1,80 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run `zed: open default settings` from the
+// command palette (cmd-shift-p / ctrl-shift-p)
+//
+// AJ! Don't forget to update your chezmoi template! Run
+// `cm edit ~/.config/zed/settings.json` and commit changes.
+{
+  "cli_default_open_behavior": "existing_window",
+  "prettier": {
+    "allowed": true
+  },
+  "edit_predictions": {
+    "provider": "copilot"
+  },
+  "project_panel": {
+    "dock": "left"
+  },
+  "outline_panel": {
+    "dock": "left"
+  },
+  "collaboration_panel": {
+    "dock": "left"
+  },
+  "git_panel": {
+    "dock": "left"
+  },
+  "theme": {
+    "mode": "system",
+    "light": "Ayu Light",
+    "dark": "One Dark"
+  },
+  "agent": {
+    "default_profile": "write",
+    "dock": "right",
+    "inline_assistant_model": {
+      "provider": "copilot_chat",
+      "model": "o3-mini"
+    },
+    "default_model": {
+      "provider": "mistral",
+      "model": "mistral-small-latest"
+    },
+    "model_parameters": []
+  },
+  "base_keymap": "VSCode",
+  // Configs for font to use for rendering text in the UI
+  "ui_font_size": 16,
+  // Configs for font to use for rendering text in the editor
+  "buffer_font_family": "FiraCode Nerd Font Mono",
+  "buffer_font_fallbacks": ["Zed Plex Mono"],
+  "buffer_font_size": 16,
+  // Configs for font to use for rendering terminal
+  // Soft wrap lines at the preferred line length or the editor width (whichever is smaller).
+  "soft_wrap": "bounded",
+  // The column at which to soft-wrap lines, for buffers where soft-wrap
+  // is enabled.
+  "preferred_line_length": 120,
+  "terminal": {
+    "font_size": 12
+  },
+  "languages": {
+    "Markdown": {
+      "format_on_save": "on",
+      "use_on_type_format": false,
+      "allow_rewrap": "anywhere",
+      "soft_wrap": "editor_width",
+      "completions": {
+        "words": "disabled"
+      },
+      "prettier": {
+        "allowed": true
+      }
+    }
+  }
+}
