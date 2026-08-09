@@ -1,7 +1,3 @@
----
-{{- /* chezmoi v2 config-file annotation: write rendered template to this path */}}
-chezmoi-config-file: /home/babayetu/.config/chezmoi/chezmoi.toml
----
 {{ $email := promptStringOnce . "email" "Email address" }}
 {{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }}
 {{ $isIterm2Managed := promptBoolOnce . "iterm2" "Manage iTerm2 preferences with chezmoi" }}
@@ -12,13 +8,15 @@ chezmoi-config-file: /home/babayetu/.config/chezmoi/chezmoi.toml
 {{- $artifactoryHost = promptStringOnce . "artifactoryHost" "DataRobot Artifactory hostname" }}
 {{- end }}
 
+{{- $scratchpadDir := promptStringOnce . "scratchpad" "In which folder does your scratchpad live?" }}
+
 [data]
 email = {{ $email | quote }}
 dr = {{ $isDRDevMachine }}
 iterm2 = {{ $isIterm2Managed }}
 artifactoryHost = {{ $artifactoryHost | quote }}
 # what folder is your scratchpad?
-scratchpad = "/home/babayetu/scratch"
+scratchpad = {{ $scratchpadDir }}
 
 [data.dev]
 java = {{ $isJavaDev }}
