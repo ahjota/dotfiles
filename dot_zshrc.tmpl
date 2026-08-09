@@ -21,7 +21,7 @@ export HOMEBREW_NO_INSTALL_CLEANUP=1
 alias g="git"
 alias ll="ls -al"
 alias cm="chezmoi"
-alias edit="open"
+alias edit="{{ if eq .chezmoi.os "darwin" }}open{{ else }}xdg-open{{ end }}"
 alias k="kubectl"
 alias t="terraform"
 alias d="docker"
@@ -65,12 +65,19 @@ then
 fi
 
 # Atuin: Magical Shell History (https://atuin.sh)
+{{ if eq .chezmoi.os "darwin" -}}
 if [[ -d $HOME/.atuin/bin ]] then
   # Add atuin to the path, and init shell plugin
   . "$HOME/.atuin/bin/env"
   eval "$(atuin init zsh)"
   eval "$(atuin gen-completions --shell zsh)"
 fi
+{{- else -}}
+if [[ $(command -v atuin) ]] then
+  eval "$(atuin init zsh)"
+  eval "$(atuin gen-completions --shell zsh)"
+fi
+{{- end }}
 
 # Antidote: the cure to slow zsh plugin management (https://antidote.sh)
 source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh &>/dev/null && antidote load
@@ -109,20 +116,28 @@ then
   eval "$(direnv hook zsh)"
 fi
 
+{{ if eq .chezmoi.os "darwin" -}}
 # The following lines have been added by Docker Desktop to enable Docker CLI completions.
 fpath=(/Users/aj.alon/.docker/completions $fpath)
 # End of Docker CLI completions
 
 # Added by dr completion installer
 fpath=(/Users/aj.alon/.zsh/completions $fpath)
+{{- end }}
 
 # Added by n-install (see http://git.io/n-install-repo).
 export N_PREFIX="$HOME/n"; [[ :$PATH: == *":$N_PREFIX/bin:"* ]] || PATH+=":$N_PREFIX/bin"
 
 # Added by Factory Desktop
+{{ if eq .chezmoi.os "darwin" -}}
 if [[ -d "/Applications/Factory.app" ]] then
   export PATH="$HOME/.local/bin:$PATH"
 fi
+{{- else -}}
+if [[ $(command -v factory) ]] then
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+{{- end }}
 
 # Added by Cargo
 if [[ -d "$HOME/.cargo/bin" ]] then

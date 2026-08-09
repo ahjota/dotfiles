@@ -20,7 +20,7 @@
   "show_last_dot_value": true,
   "code_formatter": "styler",
   "python_type": "system",
-  "python_version": "3.13.3",
-  "python_path": "/opt/homebrew/bin/python3",
+  "python_version": "{{ if eq .chezmoi.os "darwin" }}3.13.3{{ else }}3.14.6{{ end }}",
+  "python_path": "{{ if eq .chezmoi.os "darwin" }}/opt/homebrew/bin/python3{{ else }}/home/linuxbrew/.linuxbrew/bin/python3{{ end }}",
   "show_terminal_tab": false
 }
