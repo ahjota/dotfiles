@@ -85,7 +85,8 @@ source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh &>/dev/null && 
 # `~/.local/share/zsh-n-fork/n.plugin.zsh` (or wherever you prefer) and
 # swap the path on the next line.
 if command -v n >/dev/null 2>&1; then
-  zsh-defer source "$HOME/.cache/antidote/github.com/gretzky/n.zsh/n.plugin.zsh"
+  # Added by n-install (see http://git.io/n-install-repo).
+  export N_PREFIX="$HOME/n"; [[ :$PATH: == *":$N_PREFIX/bin:"* ]] || PATH+=":$N_PREFIX/bin"
 fi
 
 # Starship: Cross-Shell Prompt (https://starship.rs/)
@@ -132,9 +133,6 @@ fpath=($HOME/.docker/completions $fpath)
 # Added by dr completion installer
 fpath=($HOME/.zsh/completions $fpath)
 {{- end }}
-
-# Added by n-install (see http://git.io/n-install-repo).
-export N_PREFIX="$HOME/n"; [[ :$PATH: == *":$N_PREFIX/bin:"* ]] || PATH+=":$N_PREFIX/bin"
 
 # Added by Factory Desktop
 {{ if eq .chezmoi.os "darwin" -}}
