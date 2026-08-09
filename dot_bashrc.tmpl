@@ -1,0 +1,76 @@
+# .bashrc — sourced by interactive non-login bash shells,
+# and by login bash shells via .bash_profile (see dot_bash_profile.tmpl).
+#
+# Mirrors the monolithic dot_zshrc.tmpl approach: one file holds all
+# interactive bash config so login and non-login shells behave identically.
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+
+# User specific environment
+if ! [[ "$PATH" =~ "$HOME/.local/bin:$HOME/bin:" ]]; then
+    PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+fi
+export PATH
+
+# Uncomment the following line if you don't like systemctl's auto-paging feature:
+# export SYSTEMD_PAGER=
+
+# User specific aliases and functions
+if [ -d ~/.bashrc.d ]; then
+    for rc in ~/.bashrc.d/*; do
+        if [ -f "$rc" ]; then
+            . "$rc"
+        fi
+    done
+fi
+unset rc
+
+# LM Studio CLI (lms): only add the flatpak install path to PATH if installed
+if [ -d "$HOME/.var/app/ai.lmstudio.lm-studio/.lmstudio/bin" ]; then
+    export PATH="$PATH:$HOME/.var/app/ai.lmstudio.lm-studio/.lmstudio/bin"
+fi
+
+## Aliases
+alias ll='ls -al'
+alias g='git'
+
+{{ if .dev.java -}}
+# Maven
+alias mciskip='mvn clean install -DskipTests'
+alias mci='mvn clean install'
+alias mcu='mvn clean install -U'
+alias mvntree='mvn dependency:tree'
+alias mcrun='mvn spring-boot:run -Dspring.profiles.active=LOCAL'
+{{- end }}
+
+# Docker
+alias d='docker'
+alias doco='docker-compose'
+alias docoreup='docker-compose down && docker-compose build && docker-compose up -d'
+
+# Kubernetes
+alias k='kubectl'
+alias kcurrent='kubectl config current-context'
+
+# Terraform
+alias t='terraform'
+
+# Z
+# TODO How did you install Z?
+[ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+
+# install https://github.com/nvbn/thefuck
+if command -v thefuck >/dev/null 2>&1; then
+    eval "$(thefuck --alias)"
+fi
+
+# Install https://github.com/scop/bash-completion (Homebrew on macOS)
+[ -f /usr/local/etc/bash_completion ] && . /usr/local/etc/bash_completion
+
+# Starship: Cross-Shell Prompt (https://starship.rs/)
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init bash)"
+fi
