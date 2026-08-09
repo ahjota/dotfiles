@@ -47,6 +47,13 @@ then
   FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
 fi
 
+# Initialize zsh completion system early, before any tool (atuin,
+# antidote plugins, etc.) emits `compdef` calls. Without this,
+# `eval "$(atuin gen-completions --shell zsh)"` fails with
+# "command not found: compdef".
+autoload -Uz compinit
+compinit
+
 # prepend Homebrew GNU coreutils to PATH (shadow BSD versions)
 # only active when the gnubin directories exist
 if type brew &>/dev/null
@@ -104,13 +111,10 @@ fi
 
 # The following lines have been added by Docker Desktop to enable Docker CLI completions.
 fpath=(/Users/aj.alon/.docker/completions $fpath)
-autoload -Uz compinit
-compinit
 # End of Docker CLI completions
 
 # Added by dr completion installer
 fpath=(/Users/aj.alon/.zsh/completions $fpath)
-autoload -U compinit && compinit
 
 # Added by n-install (see http://git.io/n-install-repo).
 export N_PREFIX="$HOME/n"; [[ :$PATH: == *":$N_PREFIX/bin:"* ]] || PATH+=":$N_PREFIX/bin"
