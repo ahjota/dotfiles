@@ -4,9 +4,7 @@ Global guidance for working with coding agents (Droid, Claude Code, OpenCode).
 
 ## Development
 
-When you write or edit code, ALWAYS produce a git commit that explains the changeset.
-
-Use the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/#specification) for commit messages.
+ALWAYS produce a git commit, one per substantive change. Use the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/#specification) for commit messages. Be descriptive in the message.
 
 ## Documentation
 
@@ -15,11 +13,9 @@ Always provide in-line comments and docstrings for any code you write or edit.
 ## Code Review
 
 - Before reviewing a PR, verify you are on the correct branch and have pulled the latest changes.
-- Use worktrees if possible.
+- Use git worktrees if possible.
 - Validate criticisms against existing codebase conventions (e.g., check sibling modules or review developer docs) before flagging them as issues.
 - When reviewing, do not make claims about anti-patterns without grounding them in actual repo patterns.
-
-When reviewing a PR, checkout the associated branch into the current repo. Use worktrees if possible.
 
 ## Testing
 
@@ -35,7 +31,7 @@ When reviewing a PR, checkout the associated branch into the current repo. Use w
 
 **Solution**: When you need to reference sensitive code patterns:
 
-1. **Use `grep` or `sed` to verify actual content** (not affected by Read redaction):
+1. **Use `ripgrep`, `grep` or `sed` to verify actual content** (not affected by Read redaction):
 
    ```bash
    grep -n "function-name" /path/to/file.go
