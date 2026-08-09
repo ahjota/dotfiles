@@ -64,8 +64,8 @@ install_dr_beta <- function() {
   })
 
   # download new packages from artifactory
-  install.packages("https://artifactory.devinfra.drdev.io/artifactory/datarobot-rsource-dev/datarobot.apicore_beta.tgz", repos = NULL)
-  install.packages("https://artifactory.devinfra.drdev.io/artifactory/datarobot-rsource-dev/datarobot_beta.tgz", repos = NULL)
+  install.packages("https://{{ .artifactoryHost }}/artifactory/datarobot-rsource-dev/datarobot.apicore_beta.tgz", repos = NULL)
+  install.packages("https://{{ .artifactoryHost }}/artifactory/datarobot-rsource-dev/datarobot_beta.tgz", repos = NULL)
 
   # load packages into the search path
   library(datarobot.apicore)
