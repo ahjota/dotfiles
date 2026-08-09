@@ -68,35 +68,24 @@ jobs:
 
           # Open PRs whose head branch starts with droid/issue-.
           gh pr list --state open --json number,headRefName \
-            --jq '[.[] | select(.headRefName | startswith("droid/issue-")) | .headRefName]' \
-            > /tmp/droid-pr-branches.json || echo '[]' > /tmp/droid-pr-branches.json
+            --jq '[.[] | select(.headRefName | startswith("droid/issue-"))]' \
+            > /tmp/droid-prs.json || echo '[]' > /tmp/droid-prs.json
 
-          # Combine branches + PR head branches into one array, then extract
-          # the issue number from each (droid/issue-<N>...) and dedupe.
-          # This gives us the set of issue numbers that already have an
-          # in-flight droid attempt.
-          jq -n \
-            --slurpfile branches /tmp/droid-branches.json \
-            --slurpfile prs /tmp/droid-pr-branches.json \
-            '($branches[0] + $prs[0])
-              | map(capture("issue-(?<n>[0-9]+)") | .n | tonumber)
-              | unique' > /tmp/inflight-nums.json
-
-          echo "In-flight droid issue numbers: $(cat /tmp/inflight-nums.json)"
-
-          # Filter open issues: keep those whose number is NOT in the
-          # in-flight set. Also build the inflight metadata for the prompt.
+          # Filter out issues that already have an in-flight droid branch.
+          # Match by issue number embedded in the branch name (droid/issue-<N>).
           jq -n \
             --slurpfile issues /tmp/open-issues.json \
-            --slurpfile inflight /tmp/inflight-nums.json \
             --slurpfile branches /tmp/droid-branches.json \
-            --slurpfile prs /tmp/droid-pr-branches.json \
+            --slurpfile prs /tmp/droid-prs.json \
             '{
-              issues: ($issues[0] | map(select(.number as $n | $inflight[0] | index($n) | not))),
+              issues: ($issues[0]
+                | map(. as $iss
+                  | ($branches[0] + $prs[0].headRefName)
+                    | any(. as $b | $b | test("issue-" + ($iss.number | tostring) + "[-/]")))
+                  | select(not)) ),
               inflight: {
-                issue_numbers: $inflight[0],
                 branches: $branches[0],
-                pr_branches: $prs[0]
+                prs: [$prs[0][].headRefName]
               }
             }' > /tmp/actionable.json
 
