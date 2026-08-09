@@ -52,13 +52,13 @@ curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
 atuin setup
 ```
 
-### Optional
-
 JSON Parser: jqlang/jq
 
 ```sh
 brew install jq
 ```
+
+### Optional
 
 YAML Parser: mikefarah/yq
 
