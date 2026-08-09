@@ -21,9 +21,7 @@ I'm in the process of migrating my [old dev repo](https://github.com/ahjota/dev/
 
 ### Required
 
-- bash 3.2
-- - zsh
-    [homebrew](https://brew.sh/)
+[homebrew](https://brew.sh/)
 
 ```sh
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -36,8 +34,6 @@ I'm in the process of migrating my [old dev repo](https://github.com/ahjota/dev/
 ```sh
 brew install antidote
 ```
-
-I was previously using zinit. I was excited by the idea of its power, speed, and feature set, but trying to learn its syntax was a bear in 2022. Reflecting on this I am not enough of a power user to need its capabilities. After reading [the zsh-bench article](https://github.com/romkatv/zsh-bench) I've come to realize that other managers can be good enough. So I'm trying out antidote.
 
 [chezmoi](https://www.chezmoi.io/)
 
