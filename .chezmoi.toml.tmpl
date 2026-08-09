@@ -1,9 +1,15 @@
 {{ $email := promptStringOnce . "email" "Email address" }}
 {{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }}
+{{ $isIterm2Managed := promptBoolOnce . "iterm2" "Manage iTerm2 preferences with chezmoi" }}
+{{ $isJavaDev := promptBoolOnce . "devJava" "Do Java development on this machine" }}
 
 [data]
 email = {{ $email | quote }}
 dr = {{ $isDRDevMachine }}
+iterm2 = {{ $isIterm2Managed }}
+
+[data.dev]
+java = {{ $isJavaDev }}
 
 [data.fonts]
 sans-serif = '"Avenir Next","Avenir","Helvetica Neue","Helvetica",sans-serif"'

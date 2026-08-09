@@ -47,6 +47,16 @@ then
   FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
 fi
 
+# prepend Homebrew GNU coreutils to PATH (shadow BSD versions)
+# only active when the gnubin directories exist
+if type brew &>/dev/null
+then
+  for gnu in findutils gawk gnu-sed grep coreutils libtool; do
+    gnubin="$(brew --prefix)/opt/$gnu/libexec/gnubin"
+    [[ -d "$gnubin" ]] && [[ ":$PATH:" != *":$gnubin:"* ]] && PATH="$gnubin:$PATH"
+  done
+fi
+
 # Atuin: Magical Shell History (https://atuin.sh)
 if [[ -d $HOME/.atuin/bin ]] then
   # Add atuin to the path, and init shell plugin
