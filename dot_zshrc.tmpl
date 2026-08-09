@@ -159,3 +159,16 @@ fi
 if [[ -d "$HOME/.lmstudio/bin" ]] then
   export PATH="$PATH:$HOME/.lmstudio/bin"
 fi
+
+# User specific aliases and functions — sourced from chezmoi-managed
+# ~/.shellrc.d/ on every shell startup (matches the bashrc equivalent
+# in dot_bashrc.tmpl). Files load in lex order, so numeric prefixes
+# like 10-, 20- control load order if more snippets accumulate.
+if [ -d ~/.shellrc.d ]; then
+  for rc in ~/.shellrc.d/*; do
+    if [ -f "$rc" ]; then
+      . "$rc"
+    fi
+  done
+fi
+unset rc
