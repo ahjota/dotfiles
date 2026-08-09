@@ -1,0 +1,22 @@
+[install]
+{{- if .dr }}
+trusted-host = {{ .artifactoryHost }}
+{{- end }}
+index-url = https://pypi.org/simple
+{{- if .dr }}
+extra-index-url =
+        https://{{ .artifactoryHost }}/artifactory/api/pypi/python-all/simple
+        https://{{ .artifactoryHost }}/artifactory/api/pypi/python-dev/simple
+        https://{{ .artifactoryHost }}/artifactory/api/pypi/datarobot-python-dev/cfx/simple
+{{- end }}
+
+[global]
+{{- if .dr }}
+# below e-idx required for JJB venv
+extra-index-url =
+        https://{{ .artifactoryHost }}/artifactory/api/pypi/python-all/simple
+        https://pypi.org
+{{- else }}
+extra-index-url =
+        https://pypi.org
+{{- end }}
