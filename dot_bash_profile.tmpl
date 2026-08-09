@@ -1,7 +1,24 @@
 # .bash_profile — sourced by login bash shells.
-# All interactive config lives in ~/.bashrc (see dot_bashrc.tmpl).
-# This mirrors the stock /etc/skel/.bash_profile pattern so login shells
-# pick up the same aliases, thefuck, and starship init as non-login shells.
+# Mirrors the stock /etc/skel/.bash_profile pattern so login shells pick up
+# the same env vars, aliases, completions, and starship init as
+# non-login shells and as other POSIX login shells (zsh, sh, ksh).
+#
+# Bash's documented lookup order for login shells is ~/.bash_profile ->
+# ~/.bash_login -> ~/.profile. Because ~/.bash_profile exists, bash never
+# reads ~/.profile on its own, so dot_profile.tmpl exports (linuxbrew PATH
+# on Linux, the LM Studio native install path, and the macOS atuin env)
+# would be dropped for `bash -l`, SSH logins, and tmux started as a login
+# shell. Source ~/.profile explicitly to fix that gap; ~/.bashrc is sourced
+# after ~/.profile on purpose (POSIX env first, then interactive config) to
+# match the order used by /etc/skel/.bash_profile on Debian/Ubuntu.
+
+# POSIX login env: linuxbrew shellenv, LM Studio native bin, atuin env, etc.
+if [ -f ~/.profile ]; then
+    . ~/.profile
+fi
+
+# Interactive bash config: PATH prelude, shellrc.d snippets, aliases,
+# completions, thefuck, starship — same content for all bash shells.
 if [ -f ~/.bashrc ]; then
     . ~/.bashrc
 fi
