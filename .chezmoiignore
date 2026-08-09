@@ -11,6 +11,10 @@
 README.md
 LICENSE
 
+# GitHub Actions workflows and CI prompts are repo-internal only;
+# chezmoi should never deploy them into ~/.
+.github
+
 # Ignore non-macOS files.
 {{ if ne .chezmoi.os "darwin" -}}
 Library/Preferences
