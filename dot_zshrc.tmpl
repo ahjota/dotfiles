@@ -9,14 +9,7 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
 
 ## Aliases
-# TODO Move to their own file
-alias g="git"
-alias ll="ls -al"
-alias cm="chezmoi"
-alias edit="{{ if eq .chezmoi.os "darwin" }}open{{ else }}xdg-open{{ end }}"
-alias k="kubectl"
-alias t="terraform"
-alias d="docker"
+# see .shellrc.d/55-aliases.sh
 {{- if not .dr }}
 alias exif-histogram="exiftool -r . | grep '^Focal Length.*(35 mm equivalent' | awk -F ': ' '{print $3}' | awk '{print $1}' | sort --human-numeric-sort | uniq -c"
 {{- end }}

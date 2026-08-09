@@ -34,9 +34,7 @@ if [ -d "$HOME/.var/app/ai.lmstudio.lm-studio/.lmstudio/bin" ]; then
 fi
 
 ## Aliases
-alias ll='ls -al'
-alias g='git'
-
+# see .shellrc.d/55-aliases.sh
 {{ if .dev.java -}}
 # Maven
 alias mciskip='mvn clean install -DskipTests'
@@ -45,16 +43,6 @@ alias mcu='mvn clean install -U'
 alias mvntree='mvn dependency:tree'
 alias mcrun='mvn spring-boot:run -Dspring.profiles.active=LOCAL'
 {{- end }}
-
-# Docker
-alias d='docker'
-
-# Kubernetes
-alias k='kubectl'
-alias kcurrent='kubectl config current-context'
-
-# Terraform
-alias t='terraform'
 
 # Z
 # TODO How did you install Z?
