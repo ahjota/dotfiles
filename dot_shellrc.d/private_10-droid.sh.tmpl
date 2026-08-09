@@ -8,6 +8,10 @@
 # hash subscript semantics differ from bash's, which silently broke
 # the trusted-folder lookup. Uses a newline-delimited list + `case`
 # instead, which behaves identically across both shells.
+#
+# History: originally written on Fedora, where /bin/bash is 4+, so
+# associative arrays worked. Kept portable here because macOS ships
+# bash 3.2 as /bin/bash (GPLv3) and the user shell is zsh.
 
 # Known subcommands that should NOT be redirected (always run in CWD)
 _droid_subcommands="exec daemon search find update mcp plugin computer help"
