@@ -16,6 +16,11 @@ LICENSE
 Library/Preferences
 {{- end }}
 
+# Ignore iTerm2 preferences unless explicitly enabled.
+{{- if not .iterm2 }}
+Library/Preferences/com.googlecode.iterm2.plist
+{{- end }}
+
 # ignore non-Windows files.
 {{ if ne .chezmoi.os "windows" -}}
 {{- end }}
