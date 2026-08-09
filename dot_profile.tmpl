@@ -1,10 +1,18 @@
 # This file is sourced by the shell at login.
 # atuin set this up so that I can have access
 # to my history outside of zsh.
+{{ if eq .chezmoi.os "darwin" -}}
 . "$HOME/.atuin/bin/env"
 . "$HOME/.local/bin/env"
+{{- end }}
 
 # LM Studio CLI (lms): only add to PATH if installed
 if [ -d "$HOME/.lmstudio/bin" ]; then
   export PATH="$PATH:$HOME/.lmstudio/bin"
+fi{{ if ne .chezmoi.os "darwin" }}
+
+# Linuxbrew: ensure Homebrew/Linuxbrew bins are on PATH for login shells on Linux.
+if [ -d /home/linuxbrew/.linuxbrew ]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
+{{ end }}

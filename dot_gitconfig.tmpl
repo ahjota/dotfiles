@@ -22,6 +22,8 @@
 [credential]
 {{ if eq .chezmoi.os "darwin" }}
 	helper = osxkeychain
+{{ else }}
+	helper = store
 {{ end }}
 [checkout]
 	defaultRemote = origin
