@@ -7,11 +7,6 @@ bindkey -v
 # TODO Move env vars to their own shell file
 export WORKSPACE=${HOME}/workspace
 
-# TODO Because you are now using chezmoi for dotfiles,
-# either replace usage of AJ_CONFIG with XDG_CONFIG_HOME, or
-# remove it entirely and rely on chezmoi templating
-export AJ_CONFIG=${HOME}/workspace/dev
-
 # homebrew is great but is actively hostile sometimes
 export HOMEBREW_NO_AUTO_UPDATE=1
 export HOMEBREW_NO_INSTALL_CLEANUP=1
