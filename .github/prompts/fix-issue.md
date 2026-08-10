@@ -66,6 +66,11 @@ create no branch, and exit. That is an acceptable outcome.
 ## Constraints
 
 - **Never push** to the remote or open a PR — scripted steps handle that.
+- **Never mention** pushing, opening PRs, or workflow mechanics in your
+  result summary. Your result text is pasted verbatim into the PR body that
+  the workflow opens for you — writing "left unpushed" or "no PR opened" in
+  that context is confusing and wrong. Describe *what you changed and why*,
+  not *what the workflow will do next*.
 - **Never modify** `.github/workflows/droid-issue-fixer.yml` or this prompt
   file.
 - **Never create** or rotate secrets, API keys, or tokens.
