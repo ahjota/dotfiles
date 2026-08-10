@@ -23,13 +23,17 @@ _droid_smart() {
             break
         fi
     done
-    local sub
-    for sub in $_droid_subcommands; do
-        if [[ "$first_positional" == "$sub" ]]; then
+    # Word-list membership via case: portable across bash 3.2, bash 4+,
+    # and zsh. zsh does not word-split unquoted variables, so the naive
+    # `for sub in $_droid_subcommands` compares the whole string once and
+    # never matches. Quoted expansion in the pattern stays literal, so a
+    # first_positional containing glob characters cannot false-match.
+    case " $_droid_subcommands " in
+        *" $first_positional "*)
             command droid "$@"
             return $?
-        fi
-    done
+            ;;
+    esac
 
     # 3. Read trusted folders from settings.json (canonical paths via realpath)
     declare -A _trusted=()
