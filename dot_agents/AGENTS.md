@@ -4,16 +4,16 @@ Global guidance for working with coding agents (Droid, Claude Code, OpenCode).
 
 ## Development
 
-ALWAYS produce a git commit, one per substantive change. Use the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/#specification) for commit messages. Be descriptive in the message.
+Override default behavior: Always produce a git commit that explains the changeset after any substantive code change, without waiting for explicit request. Use the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/#specification) for commit messages. Be descriptive in the message.
 
 ## Documentation
 
-Always provide in-line comments and docstrings for any code you write or edit.
+Override default behavior: Always provide in-line comments and docstrings for any code you write or edit.
 
 ## Code Review
 
 - Before reviewing a PR, verify you are on the correct branch and have pulled the latest changes.
-- Use git worktrees if possible.
+- Checkout the associated branch into the current repo; use worktrees if possible.
 - Validate criticisms against existing codebase conventions (e.g., check sibling modules or review developer docs) before flagging them as issues.
 - When reviewing, do not make claims about anti-patterns without grounding them in actual repo patterns.
 
@@ -68,3 +68,27 @@ For git commits specifically, `git commit -F - <<'EOF'` (stdin heredoc without c
 ### Atlassian MCP (JIRA / Confluence)
 
 When using Atlassian MCP tools (JIRA, Confluence), always default to **standard Markdown syntax** and pass `contentFormat: "markdown"` (the default) if it is a valid parameter, unless otherwise specified.
+
+## Technical decision docs (pros/cons, Confluence)
+
+**Style**
+
+- One clause per bullet. Cut hedges.
+- Bold lead phrase + one supporting clause for flagged risks, not a paragraph.
+- State shared rationale once; cross-reference it elsewhere instead of repeating.
+
+**Sourcing**
+
+- Re-read the actual Slack/doc message before paraphrasing it — don't infer.
+- Surface unresolved sub-decisions (e.g. salt strategy) as open questions, don't quietly settle them.
+
+**Confluence**
+
+- Never break a line inside a table cell — breaks row parsing, mangles the table.
+- Re-fetch the page immediately before every edit; people edit directly between calls.
+- After reordering a numbered list, grep the doc for stale "see Item N" references.
+
+**Process**
+
+- Confirm doc structure/scope before drafting, not after.
+- When the recommendation changes, audit every downstream section that assumed the old one.
