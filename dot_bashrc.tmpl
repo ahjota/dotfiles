@@ -44,17 +44,21 @@ alias mvntree='mvn dependency:tree'
 alias mcrun='mvn spring-boot:run -Dspring.profiles.active=LOCAL'
 {{- end }}
 
-# Z
-# TODO How did you install Z?
-[ -f /usr/local/etc/profile.d/z.sh ] && . /usr/local/etc/profile.d/z.sh
+# Z (https://github.com/rupa/z) and bash-completion (Homebrew on macOS).
+# Resolve "$(brew --prefix)" dynamically so the lookups work on both
+# Apple Silicon (/opt/homebrew) and Intel (/usr/local) Macs — the
+# hardcoded /usr/local paths silently no-op on arm64 (fixes #86).
+# TODO How did you install Z? (override here if not installed via Homebrew.)
+if command -v brew >/dev/null 2>&1; then
+    BREW_PREFIX="$(brew --prefix)"
+    [ -f "$BREW_PREFIX/etc/profile.d/z.sh" ] && . "$BREW_PREFIX/etc/profile.d/z.sh"
+    [ -f "$BREW_PREFIX/etc/bash_completion" ] && . "$BREW_PREFIX/etc/bash_completion"
+fi
 
 # install https://github.com/nvbn/thefuck
 if command -v thefuck >/dev/null 2>&1; then
     eval "$(thefuck --alias)"
 fi
-
-# Install https://github.com/scop/bash-completion (Homebrew on macOS)
-[ -f /usr/local/etc/bash_completion ] && . /usr/local/etc/bash_completion
 
 # Starship: Cross-Shell Prompt (https://starship.rs/)
 if command -v starship >/dev/null 2>&1; then
