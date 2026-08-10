@@ -1,0 +1,15 @@
+[Unit]
+Description=mprime Mersenne prime client
+
+[Service]
+# Run the Flatpak wrapper so mprime uses its sandbox and persistent data directory.
+ExecCondition=/usr/bin/flatpak info --show-ref org.mersenne.mprime
+ExecStart=/usr/bin/flatpak run --command=mprime-wrapper org.mersenne.mprime
+Restart=on-failure
+RestartSec=10s
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
