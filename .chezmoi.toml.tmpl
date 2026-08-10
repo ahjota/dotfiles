@@ -11,12 +11,6 @@
 # Probe the major version of the bash found in PATH (macOS ships 3.2,
 # Fedora 4.0+). 0 means bash is absent. This runs only at `chezmoi init`
 # time; the result is persisted as data.bashMajor below.
-#
-# Nothing currently consumes bashMajor — the bash-version-specific droid
-# wrapper split (issues #81/#84) was consolidated into a single portable
-# file. The probe is kept intentionally so bash-version-specific logic can
-# be added later without re-deriving it. Re-run `chezmoi init` to refresh
-# after upgrading bash.
 {{ $bashMajor := 0 -}}
 {{ if lookPath "bash" -}}
 {{ $bashMajor = output "bash" "-c" "echo ${BASH_VERSINFO[0]}" | trim | int -}}
