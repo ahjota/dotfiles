@@ -290,13 +290,6 @@ jobs:
           echo "duration_ms=$duration_ms" >> "$GITHUB_OUTPUT"
           echo "num_turns=$num_turns" >> "$GITHUB_OUTPUT"
 
-          # Write a compact session-details block for the PR template.
-          duration_s=$(awk "BEGIN {printf \"%.1f\", ${duration_ms}/1000}")
-          {
-            echo "- **Session:** \`${session_id}\`"
-            echo "- **Duration:** ${duration_s}s · ${num_turns} turn(s)"
-          } > /tmp/droid-session.txt
-
           # Dump all JSON fields (minus the verbose result text) to the job
           # summary so model, usage, and other metadata are visible at a
           # glance. Whatever the CLI includes will show up here.
@@ -398,12 +391,6 @@ jobs:
           # Substitute the droid summary (multi-line → sed `r` + `d`).
           sed -i '/<!-- DROID_SUMMARY -->/{
             r /tmp/droid-summary.txt
-            d
-          }' "$pr_body"
-
-          # Substitute session details (multi-line → sed `r` + `d`).
-          sed -i '/<!-- DROID_SESSION -->/{
-            r /tmp/droid-session.txt
             d
           }' "$pr_body"
 

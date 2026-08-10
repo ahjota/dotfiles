@@ -23,7 +23,3 @@ Closes #<!-- ISSUE_NUM -->
 ### Droid exec summary
 
 <!-- DROID_SUMMARY -->
-
-### Session details
-
-<!-- DROID_SESSION -->
