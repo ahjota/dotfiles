@@ -3,6 +3,22 @@ setopt autocd
 # vim keybindings in shell
 bindkey -v
 
+# Stock vi-mode tweaks (replaces jeffreytse/zsh-vi-mode, which clobbered
+# atuin's ^R when it re-initialized the keymaps on load -- see #95)
+export KEYTIMEOUT=10  # 100ms ESC delay (default 40 = 400ms feels laggy)
+
+# Cursor shape per vi mode: beam in insert, block in normal
+function zle-keymap-select {
+  case $KEYMAP in
+    vicmd) print -n '\e[2 q' ;;
+    viins|main) print -n '\e[6 q' ;;
+  esac
+  zle reset-prompt
+}
+zle -N zle-keymap-select
+function zle-line-init { print -n '\e[6 q' }
+zle -N zle-line-init
+
 ## Env Vars
 # homebrew is great but is actively hostile sometimes
 export HOMEBREW_NO_AUTO_UPDATE=1
