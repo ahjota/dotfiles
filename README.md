@@ -91,3 +91,14 @@ during `chezmoi init` to have the preferences plist applied to
 [Rectangle](https://rectangleapp.com/) preferences are managed by chezmoi.
 The preferences plist is applied to
 `~/Library/Preferences/com.knollsoft.Rectangle.plist` on macOS.
+
+## Features
+
+### Bash version probe
+
+During `chezmoi init`, chezmoi will probe the current bash found in `PATH`
+and persist its major version as `data.bashMajor` (or `0` if bash is N/A).
+
+Use this data field to help determine whether to deploy a dotfile that
+requires bash 4.0+ features (e.g. associative arrays) or to deploy one that
+is portable.
