@@ -30,7 +30,8 @@ Library/Preferences/com.googlecode.iterm2.plist
 {{- end }}
 
 # Ignore work files.
+# Patterns match target paths, not source paths (hence .claude, not dot_claude).
 {{- if not .dr }}
 workspace/DataRobot
-dot_claude/skills/tech-debt-epic
+.claude/skills/tech-debt-epic
 {{- end }}
