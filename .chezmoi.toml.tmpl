@@ -8,8 +8,6 @@
 {{- $artifactoryHost = promptStringOnce . "artifactoryHost" "DataRobot Artifactory hostname" }}
 {{- end }}
 
-{{- $scratchpadDir := promptStringOnce . "scratchpad" "In which folder does your scratchpad live?" }}
-
 # Probe the major version of the bash found in PATH (macOS ships 3.2,
 # Fedora 4.0+). 0 means bash is absent, which .chezmoiignore treats as
 # "oldest supported" so the most conservative file variant is deployed.
@@ -24,8 +22,6 @@ email = {{ $email | quote }}
 dr = {{ $isDRDevMachine }}
 iterm2 = {{ $isIterm2Managed }}
 artifactoryHost = {{ $artifactoryHost | quote }}
-# what folder is your scratchpad?
-scratchpad = {{ $scratchpadDir | quote }}
 # major version of the bash in PATH at `chezmoi init` time (issue #81);
 # .chezmoiignore uses this to pick bash-version-specific files.
 # re-run `chezmoi init` to refresh after upgrading bash.
