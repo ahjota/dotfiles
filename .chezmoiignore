@@ -15,6 +15,13 @@ LICENSE
 # chezmoi should never deploy them into ~/.
 .github
 
+# .factory/skills/review-guidelines is repo-internal CI config for the
+# droid-action (review comment guidelines). chezmoi already ignores
+# literal dot-directories, but listing it here documents the intent
+# alongside .github above. The chezmoi-managed ~/.factory/ comes from
+# private_dot_factory/ — this entry does NOT affect that.
+.factory/skills/review-guidelines
+
 # Ignore non-macOS files.
 {{ if ne .chezmoi.os "darwin" -}}
 Library/Preferences
