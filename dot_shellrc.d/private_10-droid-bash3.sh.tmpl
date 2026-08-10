@@ -1,9 +1,37 @@
-# ~/.bashrc.d/droid.sh
+# ~/.shellrc.d/10-droid-bash3.sh — bash 3.2 variant of the droid wrapper.
+#
+# Deployed by chezmoi only on hosts whose bash predates 4.0 (e.g. macOS,
+# which ships /bin/bash 3.2); the bash 4.0+ sibling 10-droid-bash4.sh is
+# deployed elsewhere. Selection is driven by data.bashMajor (set at
+# `chezmoi init` time) via .chezmoiignore; see issue #81.
+#
+# bash 3.2 lacks associative arrays, so trusted folders are kept as a
+# newline-delimited list with a linear membership scan (the list is tiny).
+# This file is also sourced by zsh on macOS (via the ~/.shellrc.d loop in
+# ~/.zshrc), so it avoids two zsh pitfalls as well:
+#   - no `for x in $unquoted_list` iteration (zsh does not word-split
+#     unquoted variables, so such loops see the whole string at once)
+#   - locals are declared once, outside loops (redeclaring an existing
+#     local makes zsh's typeset print "name=value" on every iteration)
+#
 # Smart droid wrapper: redirects to nearest trusted folder (or ~/scratch),
 # unless running a subcommand or an explicit --cwd is given.
 
 # Known subcommands that should NOT be redirected (always run in CWD)
 _droid_subcommands="exec daemon search find update mcp plugin computer help"
+
+# _droid_trusted_contains NEEDLE LIST — return 0 if NEEDLE is one of the
+# newline-delimited entries of LIST. Whole-string comparison, so there are
+# no associative-array subscript quoting differences between bash and zsh.
+_droid_trusted_contains() {
+    local needle=$1
+    local list=$2
+    local line
+    while IFS= read -r line; do
+        [[ "$line" == "$needle" ]] && return 0
+    done <<< "$list"
+    return 1
+}
 
 _droid_smart() {
     # 1. If user explicitly passed --cwd, pass through untouched
@@ -35,15 +63,16 @@ _droid_smart() {
             ;;
     esac
 
-    # 3. Read trusted folders from settings.json (canonical paths via realpath)
-    declare -A _trusted=()
+    # 3. Read trusted folders from settings.json into a newline-delimited
+    # list (canonical paths via realpath when available; stock macOS lacks
+    # realpath, in which case paths are compared as written).
+    local t rt
+    local trusted_list=""
     if [[ -f "$HOME/.factory/settings.json" ]]; then
-        local t
         while IFS= read -r t; do
             [[ -z "$t" ]] && continue
-            local rt
             rt=$(realpath "$t" 2>/dev/null || echo "$t")
-            _trusted["$rt"]=1
+            trusted_list="${trusted_list}${rt}"$'\n'
         done < <(jq -r '.trustedFolders | keys[]?' "$HOME/.factory/settings.json" 2>/dev/null)
     fi
 
@@ -52,7 +81,7 @@ _droid_smart() {
     local dir
     dir=$(realpath "$PWD" 2>/dev/null || echo "$PWD")
     while [[ -n "$dir" && "$dir" != "/" ]]; do
-        if [[ -n "${_trusted[$dir]+x}" ]]; then
+        if _droid_trusted_contains "$dir" "$trusted_list"; then
             target="$dir"
             break
         fi
@@ -63,6 +92,9 @@ _droid_smart() {
     # Fallback path comes from chezmoi data (chezmoi.toml -> data.scratchpad).
     if [[ -z "$target" ]]; then
         target={{ .scratchpad | quote }}
+        # A leading ~ does not expand inside quotes; expand it explicitly
+        # so hosts without realpath don't pass a literal "~" to droid.
+        target="${target/#\~/$HOME}"
         target=$(realpath "$target" 2>/dev/null || echo "$target")
     fi
 
