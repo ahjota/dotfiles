@@ -1,15 +1,12 @@
 # ~/.shellrc.d/10-droid.sh — unified droid wrapper.
 #
-# Deployed on every host (bash or zsh, any version); replaces the
-# bash-version split that previously produced 10-droid-bash3.sh and
-# 10-droid-bash4.sh (issue #81). The split was only needed because the
-# bash 4+ variant used associative arrays (declare -A), which zsh indexes
-# with quote characters in the key (verified: zsh 5.9 stores "/path" as
-# the literal string `"/path"`, quotes included, while bare-path lookup
-# never matches). Consolidated to a single file using only constructs
-# portable to bash 3.2, bash 4+, and zsh 5.x.
+# Smart droid wrapper: redirects to nearest trusted folder (or $SCRATCHPAD),
+# unless running a subcommand or an explicit --cwd is given.
 #
-# Portable idioms used here (all three reasonings from issue #84):
+# Deployed on every host (bash or zsh, any version).
+# Portable to bash 3.2, bash 4+, and zsh 5.x.
+#
+# Portable idioms used here:
 #   - Subcommand membership via case pattern on a space-padded literal,
 #     NOT `for sub in $unquoted_list` (zsh does not word-split unquoted
 #     variables, so that loop sees the whole string at once and never
@@ -20,11 +17,6 @@
 #     shell-portable.
 #   - Locals are declared once outside loops; re-declaring an existing
 #     local makes zsh's typeset print "name=value" on every iteration.
-#
-# See issue #84 for the upstream bug report.
-#
-# Smart droid wrapper: redirects to nearest trusted folder (or $SCRATCHPAD),
-# unless running a subcommand or an explicit --cwd is given.
 
 # Known subcommands that should NOT be redirected (always run in CWD).
 # Stored as a literal space-separated string; the case pattern below does
@@ -33,10 +25,9 @@
 _droid_subcommands="exec daemon search find update mcp plugin computer help"
 
 # _droid_trusted_contains NEEDLE LIST — return 0 if NEEDLE is one of the
-# newline-delimited entries of LIST. Whole-string comparison, so there
-# are no associative-array subscript quoting differences between bash
-# and zsh. The list is short (typically 0-3 entries), so a linear scan
-# is also cheaper than building an associative array.
+# newline-delimited entries of LIST. Whole-string comparison, linear scan.
+# Reminder: don't build an associative array for this unless you drop
+# support for bash 3.2 AND zsh gets its act together.
 _droid_trusted_contains() {
     local needle=$1
     local list=$2
