@@ -13,8 +13,10 @@ name: Droid Issue Fixer
 on:
   workflow_dispatch:
   schedule:
-    # Runs Thu-Mon at 9am UTC, with a random minute to avoid cron spikes.
-    - cron: "17-47 9 * * 4-1"
+    # Runs Thu-Mon at 09:17 UTC (off-the-hour to avoid GitHub cron spikes).
+    # Day-of-week: 0=Sun,1=Mon,4=Thu,5=Fri,6=Sat — cron ranges don't wrap, so
+    # Thu-Mon is expressed as the list 0-1,4-6 (not 4-1).
+    - cron: "17 9 * * 0-1,4-6"
 
 permissions:
   contents: write
