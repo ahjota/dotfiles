@@ -16,8 +16,8 @@ LICENSE
 Library/Preferences
 {{- end }}
 
-# Ignore the mprime service on non-Linux systems.
-{{ if ne .chezmoi.os "linux" -}}
+# Ignore the mprime service unless this is Linux with the mprime Flatpak installed.
+{{ if or (ne .chezmoi.os "linux") (not (and (lookPath "flatpak") (contains "org.mersenne.mprime" (output (lookPath "flatpak") "list" "--app" "--columns=application")))) -}}
 .config/systemd/user/mprime.service
 {{- end }}
 
