@@ -7,3 +7,5 @@
   <!--- **sd** is installed — prefer over `sed` for find-and-replace in files-->
 - **jq** is installed — use for JSON processing in shell pipelines
 - **GNU parallel** is installed — use for concurrent shell tasks when beneficial
+
+@~/.agents/AGENTS.md
