@@ -68,10 +68,10 @@ _droid_smart() {
 
     # 5. No trusted ancestor → default to the scratchpad.
     # SCRATCHPAD is exported by ~/.shellrc.d/01-env.sh (default:
-    # $WORKSPACE/scratch); the inline fallback keeps this file sane even
+    # $HOME/scratch); the inline fallback keeps this file sane even
     # if it is ever sourced without 01-env.sh.
     if [[ -z "$target" ]]; then
-        target=${SCRATCHPAD:-$HOME/workspace/scratch}
+        target=${SCRATCHPAD:-$HOME/scratch}
     fi
 
     command droid --cwd "$target" "$@"

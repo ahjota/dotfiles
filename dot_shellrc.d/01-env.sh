@@ -9,4 +9,4 @@ export WORKSPACE="${HOME}/workspace"
 # Consumed by the droid wrapper (10-droid-bash*.sh) as its default cwd,
 # but intentionally not droid-specific. The :- guard lets a machine
 # override it earlier (e.g. ~/.profile); always use an absolute path.
-export SCRATCHPAD="${SCRATCHPAD:-${WORKSPACE}/scratch}"
+export SCRATCHPAD="${SCRATCHPAD:-${HOME}/scratch}"
