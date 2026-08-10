@@ -14,7 +14,7 @@
 #   - locals are declared once, outside loops (redeclaring an existing
 #     local makes zsh's typeset print "name=value" on every iteration)
 #
-# Smart droid wrapper: redirects to nearest trusted folder (or ~/scratch),
+# Smart droid wrapper: redirects to nearest trusted folder (or $SCRATCHPAD),
 # unless running a subcommand or an explicit --cwd is given.
 
 # Known subcommands that should NOT be redirected (always run in CWD)
@@ -88,14 +88,12 @@ _droid_smart() {
         dir=$(dirname "$dir")
     done
 
-    # 5. No trusted ancestor → default to scratchpad
-    # Fallback path comes from chezmoi data (chezmoi.toml -> data.scratchpad).
+    # 5. No trusted ancestor → default to the scratchpad.
+    # SCRATCHPAD is exported by ~/.shellrc.d/01-env.sh (default:
+    # $HOME/scratch); the inline fallback keeps this file sane even
+    # if it is ever sourced without 01-env.sh.
     if [[ -z "$target" ]]; then
-        target={{ .scratchpad | quote }}
-        # A leading ~ does not expand inside quotes; expand it explicitly
-        # so hosts without realpath don't pass a literal "~" to droid.
-        target="${target/#\~/$HOME}"
-        target=$(realpath "$target" 2>/dev/null || echo "$target")
+        target=${SCRATCHPAD:-$HOME/scratch}
     fi
 
     command droid --cwd "$target" "$@"

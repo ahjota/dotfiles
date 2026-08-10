@@ -147,7 +147,6 @@ jobs:
             'dr = false' \
             'iterm2 = false' \
             'artifactoryHost = ""' \
-            'scratchpad = "/tmp/scratchpad"' \
             '[data.dev]' \
             'java = false' \
             '[data.fonts]' \
