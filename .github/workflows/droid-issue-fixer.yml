@@ -268,6 +268,67 @@ jobs:
           echo "hard_fail=false" >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------------------
+      # 7b. Extract session metadata for the job summary + PR body
+      # ------------------------------------------------------------------
+      - name: Extract session metadata
+        id: metadata
+        if: steps.collect.outputs.has_work == 'true'
+        run: |
+          set -euo pipefail
+
+          session_id="unknown"
+          duration_ms=0
+          num_turns=0
+
+          if [ -f /tmp/droid-out.json ]; then
+            session_id=$(jq -r '.session_id // "unknown"' /tmp/droid-out.json 2>/dev/null || echo "unknown")
+            duration_ms=$(jq -r '.duration_ms // 0' /tmp/droid-out.json 2>/dev/null || echo 0)
+            num_turns=$(jq -r '.num_turns // 0' /tmp/droid-out.json 2>/dev/null || echo 0)
+          fi
+
+          echo "session_id=$session_id" >> "$GITHUB_OUTPUT"
+          echo "duration_ms=$duration_ms" >> "$GITHUB_OUTPUT"
+          echo "num_turns=$num_turns" >> "$GITHUB_OUTPUT"
+
+          # Write a compact session-details block for the PR template.
+          duration_s=$(awk "BEGIN {printf \"%.1f\", ${duration_ms}/1000}")
+          {
+            echo "- **Session:** \`${session_id}\`"
+            echo "- **Duration:** ${duration_s}s · ${num_turns} turn(s)"
+          } > /tmp/droid-session.txt
+
+          # Dump all JSON fields (minus the verbose result text) to the job
+          # summary so model, usage, and other metadata are visible at a
+          # glance. Whatever the CLI includes will show up here.
+          {
+            echo ""
+            echo "### Droid session details"
+            echo ""
+            if [ -f /tmp/droid-out.json ]; then
+              jq -r 'del(.result) | to_entries[] | "- **\(.key):** \(.value | tostring)"' \
+                /tmp/droid-out.json 2>/dev/null || echo "- (failed to parse session metadata)"
+            else
+              echo "- (no output captured)"
+            fi
+            echo ""
+            echo "_Full JSON output is available in the run artifacts._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 7c. Upload droid session artifacts
+      # ------------------------------------------------------------------
+      - name: Upload droid session artifacts
+        if: steps.collect.outputs.has_work == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: droid-session-${{ github.run_id }}
+          path: |
+            /tmp/droid-out.json
+            /tmp/prompt.md
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ------------------------------------------------------------------
       # 8. Finish: push branch + open PR (or salvage on error)
       # ------------------------------------------------------------------
       - name: Push branch and open PR
@@ -337,6 +398,12 @@ jobs:
           # Substitute the droid summary (multi-line → sed `r` + `d`).
           sed -i '/<!-- DROID_SUMMARY -->/{
             r /tmp/droid-summary.txt
+            d
+          }' "$pr_body"
+
+          # Substitute session details (multi-line → sed `r` + `d`).
+          sed -i '/<!-- DROID_SESSION -->/{
+            r /tmp/droid-session.txt
             d
           }' "$pr_body"
 
