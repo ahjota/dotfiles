@@ -47,16 +47,3 @@ Library/Preferences/com.googlecode.iterm2.plist
 workspace/DataRobot
 .claude/skills/tech-debt-epic
 {{- end }}
-
-# bash-version-specific droid wrapper (issue #81): deploy only the variant
-# matching this host's bash major version. Patterns match target paths, so
-# .shellrc.d here, not dot_shellrc.d.
-# `get`+`default` keeps `chezmoi apply` working on hosts whose chezmoi.toml
-# predates the bashMajor key; they get the bash 3.2 (most conservative)
-# variant until `chezmoi init` repopulates the config.
-{{ $bashMajor := get . "bashMajor" | default 0 | int -}}
-{{ if ge $bashMajor 4 -}}
-.shellrc.d/10-droid-bash3.sh
-{{- else -}}
-.shellrc.d/10-droid-bash4.sh
-{{- end }}
