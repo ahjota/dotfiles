@@ -47,8 +47,3 @@ Library/Preferences/com.googlecode.iterm2.plist
 workspace/DataRobot
 .claude/skills/tech-debt-epic
 {{- end }}
-
-# The unified droid wrapper (dot_shellrc.d/10-droid.sh) is deployed on
-# every host; it replaces the bash-version split that previously
-# produced dot_shellrc.d/10-droid-bash3.sh and dot_shellrc.d/10-droid-bash4.sh
-# (issues #81 and #84).
