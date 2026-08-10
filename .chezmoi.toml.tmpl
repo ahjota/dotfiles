@@ -9,9 +9,8 @@
 {{- end }}
 
 # Probe the major version of the bash found in PATH (macOS ships 3.2,
-# Fedora 4.0+). 0 means bash is absent, which .chezmoiignore treats as
-# "oldest supported" so the most conservative file variant is deployed.
-# This runs only at `chezmoi init` time; the result is persisted below.
+# Fedora 4.0+). 0 means bash is absent. This runs only at `chezmoi init`
+# time; the result is persisted as data.bashMajor below.
 {{ $bashMajor := 0 -}}
 {{ if lookPath "bash" -}}
 {{ $bashMajor = output "bash" "-c" "echo ${BASH_VERSINFO[0]}" | trim | int -}}
@@ -22,9 +21,9 @@ email = {{ $email | quote }}
 dr = {{ $isDRDevMachine }}
 iterm2 = {{ $isIterm2Managed }}
 artifactoryHost = {{ $artifactoryHost | quote }}
-# major version of the bash in PATH at `chezmoi init` time (issue #81);
-# .chezmoiignore uses this to pick bash-version-specific files.
-# re-run `chezmoi init` to refresh after upgrading bash.
+# Major version of the bash in PATH at `chezmoi init` time (0 if bash is
+# absent). Kept for future bash-version-specific logic; nothing consumes
+# it yet. Re-run `chezmoi init` to refresh after upgrading bash.
 bashMajor = {{ $bashMajor }}
 
 [data.dev]

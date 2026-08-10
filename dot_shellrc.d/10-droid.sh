@@ -1,28 +1,33 @@
-# ~/.shellrc.d/10-droid-bash3.sh — bash 3.2 variant of the droid wrapper.
-#
-# Deployed by chezmoi only on hosts whose bash predates 4.0 (e.g. macOS,
-# which ships /bin/bash 3.2); the bash 4.0+ sibling 10-droid-bash4.sh is
-# deployed elsewhere. Selection is driven by data.bashMajor (set at
-# `chezmoi init` time) via .chezmoiignore; see issue #81.
-#
-# bash 3.2 lacks associative arrays, so trusted folders are kept as a
-# newline-delimited list with a linear membership scan (the list is tiny).
-# This file is also sourced by zsh on macOS (via the ~/.shellrc.d loop in
-# ~/.zshrc), so it avoids two zsh pitfalls as well:
-#   - no `for x in $unquoted_list` iteration (zsh does not word-split
-#     unquoted variables, so such loops see the whole string at once)
-#   - locals are declared once, outside loops (redeclaring an existing
-#     local makes zsh's typeset print "name=value" on every iteration)
+# ~/.shellrc.d/10-droid.sh — unified droid wrapper.
 #
 # Smart droid wrapper: redirects to nearest trusted folder (or $SCRATCHPAD),
 # unless running a subcommand or an explicit --cwd is given.
+#
+# Deployed on every host (bash or zsh, any version).
+# Portable to bash 3.2, bash 4+, and zsh 5.x.
+#
+# Portable idioms used here:
+#   - Subcommand membership via case pattern on a space-padded literal,
+#     NOT `for sub in $unquoted_list` (zsh does not word-split unquoted
+#     variables, so that loop sees the whole string at once and never
+#     matches).
+#   - Trusted folders stored as a single newline-delimited string, with
+#     linear membership scan in a while-read loop. Cheaper than
+#     associative arrays for the typical 0-3 folder list and entirely
+#     shell-portable.
+#   - Locals are declared once outside loops; re-declaring an existing
+#     local makes zsh's typeset print "name=value" on every iteration.
 
-# Known subcommands that should NOT be redirected (always run in CWD)
+# Known subcommands that should NOT be redirected (always run in CWD).
+# Stored as a literal space-separated string; the case pattern below does
+# membership via padding, which works the same in bash and zsh without
+# relying on either shell's word-splitting behavior.
 _droid_subcommands="exec daemon search find update mcp plugin computer help"
 
 # _droid_trusted_contains NEEDLE LIST — return 0 if NEEDLE is one of the
-# newline-delimited entries of LIST. Whole-string comparison, so there are
-# no associative-array subscript quoting differences between bash and zsh.
+# newline-delimited entries of LIST. Whole-string comparison, linear scan.
+# Reminder: don't build an associative array for this unless you drop
+# support for bash 3.2 AND zsh gets its act together.
 _droid_trusted_contains() {
     local needle=$1
     local list=$2
@@ -43,7 +48,10 @@ _droid_smart() {
         fi
     done
 
-    # 2. If first positional arg is a subcommand, pass through (no redirect)
+    # 2. If first positional arg is a subcommand, pass through (no redirect).
+    # Identify the first non-flag positional argument; flags like --verbose
+    # are skipped so a subcommand after flags (e.g. `droid --quiet exec ...`)
+    # is still detected as a subcommand and passes through unwrapped.
     local first_positional=""
     for arg in "$@"; do
         if [[ "$arg" != -* ]]; then

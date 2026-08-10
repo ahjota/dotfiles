@@ -15,21 +15,6 @@
 - bash 3.2 (required for MacOS Sonoma)
 - bash 4.0 (Fedora)
 
-### bash-version-specific files (issue #81)
-
-Some snippets require bash 4.0+ features (e.g. associative arrays in the
-`droid` wrapper), while macOS ships bash 3.2. Rather than branching inside
-Go templates, chezmoi deploys entirely different files per bash version:
-
-- `.chezmoi.toml.tmpl` probes the bash in `PATH` at `chezmoi init` time and
-  persists its major version as `data.bashMajor` (0 if bash is absent).
-- `.chezmoiignore` reads `bashMajor` and deploys exactly one of
-  `~/.shellrc.d/10-droid-bash3.sh` (bash < 4.0) or
-  `~/.shellrc.d/10-droid-bash4.sh` (bash >= 4.0).
-
-After upgrading bash on a host, re-run `chezmoi init` to refresh
-`bashMajor`, then `chezmoi apply`.
-
 ## Prerequisites
 
 ### Required
@@ -106,3 +91,14 @@ during `chezmoi init` to have the preferences plist applied to
 [Rectangle](https://rectangleapp.com/) preferences are managed by chezmoi.
 The preferences plist is applied to
 `~/Library/Preferences/com.knollsoft.Rectangle.plist` on macOS.
+
+## Features
+
+### Bash version probe
+
+During `chezmoi init`, chezmoi will probe the current bash found in `PATH`
+and persist its major version as `data.bashMajor` (or `0` if bash is N/A).
+
+Use this data field to help determine whether to deploy a dotfile that
+requires bash 4.0+ features (e.g. associative arrays) or to deploy one that
+is portable.
