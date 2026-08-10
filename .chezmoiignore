@@ -16,6 +16,11 @@ LICENSE
 Library/Preferences
 {{- end }}
 
+# Ignore the mprime service on non-Linux systems.
+{{ if ne .chezmoi.os "linux" -}}
+.config/systemd/user/mprime.service
+{{- end }}
+
 # Ignore iTerm2 preferences unless explicitly enabled.
 {{- if not .iterm2 }}
 Library/Preferences/com.googlecode.iterm2.plist
