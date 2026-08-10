@@ -2,8 +2,7 @@
 
 # This is used by antidote. Do you have it?
 # ref: https://antidote.sh/
-# NOTE: antidote pins clones at first install; run `antidote update`
-# periodically to pull upstream fixes (see #96).
+Also, antidote pins everything. Did you update recently?
 
 # Basic Zsh plugins are defined in user/repo format
 
