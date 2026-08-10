@@ -16,6 +16,13 @@ Always provide in-line comments and docstrings for any code you write or edit.
 - Use git worktrees if possible.
 - Validate criticisms against existing codebase conventions (e.g., check sibling modules or review developer docs) before flagging them as issues.
 - When reviewing, do not make claims about anti-patterns without grounding them in actual repo patterns.
+- **Comment content — findings only, never process narration.** Review
+  comments must contain concrete findings (bugs, security issues,
+  correctness problems, actionable suggestions). Never narrate workflow
+  mechanics — passes, candidate queues, validation steps, model policy,
+  or internal pipeline details. The PR author can read the action run
+  logs for that. If no issues are found, say "LGTM" and nothing else. Do
+  not cite the PR body or your own prior output as validation evidence.
 
 ## Testing
 
