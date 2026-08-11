@@ -66,19 +66,22 @@ then
 fi
 
 # Atuin: Magical Shell History (https://atuin.sh)
-{{ if eq .chezmoi.os "darwin" -}}
-if [[ -d $HOME/.atuin/bin ]] then
-  # Add atuin to the path, and init shell plugin
+# Two install paths are supported:
+#   1. Standalone curl script -> ships ~/.atuin/bin/env, which prepends
+#      ~/.atuin/bin to PATH.
+#   2. Package manager (e.g. linuxbrew in the Bazzite-DX base image,
+#      Homebrew on macOS) -> atuin is already on PATH; no env script.
+# Source env only when present, then init the zsh plugin + completions
+# whenever atuin is reachable from either path. (Replaces the old OS
+# branch, whose Linux half skipped env and silently no-oped on a
+# curl-only install with atuin not yet on PATH.)
+if [[ -f $HOME/.atuin/bin/env ]] then
   . "$HOME/.atuin/bin/env"
-  eval "$(atuin init zsh)"
-  eval "$(atuin gen-completions --shell zsh)"
 fi
-{{- else -}}
 if [[ $(command -v atuin) ]] then
   eval "$(atuin init zsh)"
   eval "$(atuin gen-completions --shell zsh)"
 fi
-{{- end }}
 
 # Antidote: the cure to slow zsh plugin management (https://antidote.sh)
 source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh &>/dev/null && antidote load

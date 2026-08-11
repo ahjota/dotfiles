@@ -55,6 +55,23 @@ if command -v brew >/dev/null 2>&1; then
     [ -f "$BREW_PREFIX/etc/bash_completion" ] && . "$BREW_PREFIX/etc/bash_completion"
 fi
 
+# Atuin: Magical Shell History (https://atuin.sh)
+# Two install paths are supported:
+#   1. Standalone curl script -> ships ~/.atuin/bin/env, which prepends
+#      ~/.atuin/bin to PATH (idempotent — skips if already prepended).
+#   2. Package manager (e.g. linuxbrew in the Bazzite-DX base image,
+#      Homebrew on macOS) -> atuin is already on PATH; no env script.
+# Source env only when the curl installer provided it, then init the
+# bash plugin whenever atuin is reachable from either path. The `bash`
+# arg matches the documented invocation; the env script currently
+# ignores it but this stays forward-compatible.
+if [ -f "$HOME/.atuin/bin/env" ]; then
+    . "$HOME/.atuin/bin/env" bash
+fi
+if command -v atuin >/dev/null 2>&1; then
+    eval "$(atuin init bash)"
+fi
+
 # install https://github.com/nvbn/thefuck
 if command -v thefuck >/dev/null 2>&1; then
     eval "$(thefuck --alias)"
