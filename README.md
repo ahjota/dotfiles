@@ -70,6 +70,40 @@ Environment Management: direnv
 
 Faster Text Search: ripgrep
 
+## Agent instructions
+
+Global, cross-project agent guidance lives in `~/.agents/AGENTS.md` (chezmoi
+source: [`dot_agents/AGENTS.md`](dot_agents/AGENTS.md)). This is a **personal
+convention** — there is no cross-tool standard for a home/global instructions
+location; the [agents.md](https://agents.md/) standard only covers
+repository-root `AGENTS.md`. Each tool is wired to the canonical file:
+
+- **Factory Droid** — reads `~/.agents/AGENTS.md` natively (it checks
+  `~/.agents/` as a personal instruction directory).
+- **Claude Code** — `~/.claude/CLAUDE.md` imports `@~/.agents/AGENTS.md`.
+- **OpenCode** — `~/.config/opencode/AGENTS.md` is a chezmoi-managed symlink
+  to `~/.agents/AGENTS.md`.
+- **Zed** — `~/.config/zed/AGENTS.md` is a chezmoi-managed symlink to
+  `~/.agents/AGENTS.md`.
+- **Cursor / Bugbot / Obsidian** — no global-file support; use per-repo
+  `AGENTS.md` / `.cursor/BUGBOT.md`.
+
+### Syncing global rules into a repo
+
+Repo-root `AGENTS.md` is the only standardized, tool-portable surface, so
+`agents-sync` injects the global rules into a repo's `AGENTS.md` as a managed
+block (between `<!-- BEGIN global agents -->` / `<!-- END global agents -->`
+markers), preserving repo-specific content:
+
+```sh
+agents-sync                # inject/refresh into ./AGENTS.md
+agents-sync /path/to/repo  # inject into another repo
+agents-sync --check        # dry-run: exit 0 if in sync, 1 if stale/missing
+agents-sync --remove       # strip the managed block
+```
+
+Re-running `agents-sync` refreshes the block without duplicating it.
+
 ## Fonts
 
 [Fira Code Nerd Font](https://www.nerdfonts.com/font-downloads)
