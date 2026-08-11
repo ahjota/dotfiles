@@ -70,6 +70,7 @@ if [ -f "$HOME/.atuin/bin/env" ]; then
 fi
 if command -v atuin >/dev/null 2>&1; then
     eval "$(atuin init bash)"
+    eval "$(atuin gen-completions --shell bash)"
 fi
 
 # install https://github.com/nvbn/thefuck
