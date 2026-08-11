@@ -48,6 +48,7 @@ curl -sS https://starship.rs/install.sh | sh
 Shell History: [Atuin](https://atuin.sh)
 
 ```sh
+# if it isn't already installed via homebrew, as it is in Bazzite-DX...
 curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
 atuin setup
 ```
