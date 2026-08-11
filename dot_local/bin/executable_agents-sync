@@ -1,0 +1,107 @@
+#!/bin/sh
+# agents-sync — inject ~/.agents/AGENTS.md into a repository's root AGENTS.md
+# as a managed block, preserving repo-specific content outside the block.
+#
+# Repo-root AGENTS.md is the only standardized, tool-portable surface
+# (https://agents.md/). This layers your personal global rules on top of a
+# repo's own AGENTS.md so every agent sees both, without clobbering
+# project-specific instructions.
+#
+# Usage:
+#   agents-sync                 sync into ./AGENTS.md
+#   agents-sync /path/to/repo   sync into /path/to/repo/AGENTS.md
+#   agents-sync --check [repo]  dry-run: exit 0 if the managed block is in
+#                               sync, 1 if missing/stale (nothing written)
+#   agents-sync --remove [repo] strip the managed block
+#
+# Markers are HTML comments. Claude Code strips block-level HTML comments
+# before injection (so the markers vanish, content stays); other agents see
+# them as harmless comment lines. The injected global content itself starts
+# with its own "# Personal AGENTS.md" heading, so it is visible to all tools
+# regardless.
+
+set -eu
+
+GLOBAL="${AGENTS_GLOBAL:-$HOME/.agents/AGENTS.md}"
+BEGIN_MARK="<!-- BEGIN global agents (managed by agents-sync; source ~/.agents/AGENTS.md) -->"
+END_MARK="<!-- END global agents -->"
+
+remove=0
+check=0
+repo="."
+if [ "${1:-}" = "--remove" ]; then
+  remove=1
+  repo="${2:-.}"
+elif [ "${1:-}" = "--check" ]; then
+  check=1
+  repo="${2:-.}"
+elif [ $# -ge 1 ]; then
+  repo="$1"
+fi
+target="$repo/AGENTS.md"
+
+# Build the expected managed block (markers + global file contents) on stdout.
+# Exits 1 if the global source file is missing.
+build_block() {
+  if [ ! -f "$GLOBAL" ]; then
+    echo "agents-sync: global file not found: $GLOBAL" >&2
+    exit 1
+  fi
+  { printf '%s\n' "$BEGIN_MARK"; cat "$GLOBAL"; printf '%s\n' "$END_MARK"; }
+}
+
+# --- --remove: strip the managed block --------------------------------------
+if [ "$remove" = 1 ]; then
+  [ -f "$target" ] || exit 0
+  awk -v b="$BEGIN_MARK" -v e="$END_MARK" '
+    $0==b { skip=1; next }
+    $0==e { skip=0; next }
+    !skip { print }
+  ' "$target" > "$target.tmp" && mv "$target.tmp" "$target"
+  echo "agents-sync: removed managed block from $target"
+  exit 0
+fi
+
+# --- --check: dry-run, nothing written --------------------------------------
+if [ "$check" = 1 ]; then
+  [ -f "$target" ] || { echo "agents-sync: $target missing (no managed block)" >&2; exit 1; }
+  grep -qF "$BEGIN_MARK" "$target" || { echo "agents-sync: no managed block in $target" >&2; exit 1; }
+  grep -qF "$END_MARK" "$target"   || { echo "agents-sync: BEGIN marker present but END missing in $target" >&2; exit 1; }
+  expected=$(mktemp); current=$(mktemp)
+  trap 'rm -f "$expected" "$current"' EXIT
+  build_block > "$expected"
+  awk -v b="$BEGIN_MARK" -v e="$END_MARK" '
+    $0==b { inblk=1 }
+    inblk { print }
+    $0==e { inblk=0 }
+  ' "$target" > "$current"
+  if cmp -s "$expected" "$current"; then
+    echo "agents-sync: $target in sync"
+    exit 0
+  fi
+  echo "agents-sync: $target managed block is stale" >&2
+  exit 1
+fi
+
+# --- sync (default): inject or refresh the managed block --------------------
+block=$(mktemp)
+trap 'rm -f "$block"' EXIT
+build_block > "$block"
+
+if [ ! -f "$target" ]; then
+  { cat "$block"; printf '\n# Repository-specific instructions\n\n<!-- build/test commands, layout, conventions -->\n'; } > "$target"
+  echo "agents-sync: created $target with global block"
+elif grep -qF "$BEGIN_MARK" "$target"; then
+  # Guard: a BEGIN marker with no matching END would make the awk below
+  # truncate the file tail (skip never resets). Refuse rather than risk data loss.
+  grep -qF "$END_MARK" "$target" || { echo "agents-sync: $target has BEGIN marker but no END marker; fix manually before syncing" >&2; exit 1; }
+  awk -v b="$BEGIN_MARK" -v e="$END_MARK" -v blk="$block" '
+    $0==b { while ((getline l < blk) > 0) print l; close(blk); skip=1; next }
+    $0==e { skip=0; next }
+    !skip { print }
+  ' "$target" > "$target.tmp" && mv "$target.tmp" "$target"
+  echo "agents-sync: refreshed managed block in $target"
+else
+  { cat "$block"; printf '\n'; cat "$target"; } > "$target.tmp" && mv "$target.tmp" "$target"
+  echo "agents-sync: prepended managed block to $target"
+fi
