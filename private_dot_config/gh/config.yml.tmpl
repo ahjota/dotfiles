@@ -1,0 +1,24 @@
+# What protocol to use when performing git operations. Supported values: ssh, https
+git_protocol: https
+# What editor gh should run when creating issues, pull requests, etc. If blank, will refer to environment.
+# editor: zed
+# When to interactively prompt. This is a global config that cannot be overridden by hostname. Supported values: enabled, disabled
+prompt: enabled
+# A pager program to send command output to, e.g. "less". Set the value to "cat" to disable the pager.
+pager:
+# Aliases allow you to create nicknames for gh commands
+aliases:
+  co: pr checkout
+version: "1"
+{{- if and (eq .chezmoi.os "linux") (lookPath "flatpak") }}
+# Browser used by `gh ... --web` (and any gh command that opens a URL).
+#
+# On atomic Linux desktops such as Bazzite, the default xdg-open dispatch
+# launches the Flatpak Firefox as a detached background process whose
+# sandbox cannot create a user namespace (clone() -> EPERM), so the page
+# never opens. Point gh straight at the Flatpak Firefox instead.
+#
+# Emitted only on Linux when flatpak is on PATH; darwin and flatpak-less
+# hosts render byte-identical to the original config.yml (no browser key).
+browser: flatpak run org.mozilla.firefox
+{{- end }}
