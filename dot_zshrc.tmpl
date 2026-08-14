@@ -43,9 +43,15 @@ then
 fi
 
 # Homebrew: The Missing Package Manager (https://brew.sh)
+# Cache `brew --prefix` once per shell startup. It previously ran up
+# to 8 times (FPATH, the gnubin for-loop, antidote) and each call
+# spawns a subprocess that takes ~100-200ms on macOS, so the cache
+# saves ~1s of interactive shell startup latency on brew hosts.
 if type brew &>/dev/null
 then
-  FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+  # Single brew --prefix call; reuse $BREW_PREFIX below.
+  BREW_PREFIX="$(brew --prefix)"
+  FPATH="$BREW_PREFIX/share/zsh/site-functions:${FPATH}"
 fi
 
 # Initialize zsh completion system early, before any tool (atuin,
@@ -60,7 +66,7 @@ compinit
 if type brew &>/dev/null
 then
   for gnu in findutils gawk gnu-sed grep coreutils libtool; do
-    gnubin="$(brew --prefix)/opt/$gnu/libexec/gnubin"
+    gnubin="$BREW_PREFIX/opt/$gnu/libexec/gnubin"
     [[ -d "$gnubin" ]] && [[ ":$PATH:" != *":$gnubin:"* ]] && PATH="$gnubin:$PATH"
   done
 fi
@@ -84,7 +90,12 @@ if [[ $(command -v atuin) ]] then
 fi
 
 # Antidote: the cure to slow zsh plugin management (https://antidote.sh)
-source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh &>/dev/null && antidote load
+# Sourced from inside the brew guard above so reinstalls, zsh's
+# completion system, and antidote itself all use the same cached
+# $BREW_PREFIX instead of spawning `brew --prefix` again. (Closes #70)
+if type brew &>/dev/null; then
+  source "$BREW_PREFIX/opt/antidote/share/antidote/antidote.zsh" &>/dev/null && antidote load
+fi
 
 # Starship: Cross-Shell Prompt (https://starship.rs/)
 if [[ $(command -v starship) ]] then
