@@ -27,6 +27,14 @@
 	helper = manager
 	helper = cache --timeout=3600
 {{- end }}
+{{ if lookPath "gh" -}}
+[credential "https://github.com"]
+	helper =
+	helper = !{{ lookPath "gh" }} auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !{{ lookPath "gh" }} auth git-credential
+{{- end }}
 [checkout]
 	defaultRemote = origin
 [commit]
