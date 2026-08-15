@@ -6,6 +6,10 @@
 
 # Basic Zsh plugins are defined in user/repo format
 
+# delays compinit until fpath is set.
+# don't delete this again.
+mattmc3/ez-compinit
+
 # suggest commands from history as you type.
 zsh-users/zsh-autosuggestions
 
