@@ -54,12 +54,13 @@ then
   FPATH="$BREW_PREFIX/share/zsh/site-functions:${FPATH}"
 fi
 
-# Initialize zsh completion system early, before any tool (atuin,
-# antidote plugins, etc.) emits `compdef` calls. Without this,
-# `eval "$(atuin gen-completions --shell zsh)"` fails with
-# "command not found: compdef".
-autoload -Uz compinit
-compinit
+# Antidote: the cure to slow zsh plugin management (https://antidote.sh)
+# Sourced from inside the brew guard above so reinstalls, zsh's
+# completion system, and antidote itself all use the same cached
+# $BREW_PREFIX instead of spawning `brew --prefix` again.
+if type brew &>/dev/null; then
+  source "$BREW_PREFIX/opt/antidote/share/antidote/antidote.zsh" &>/dev/null && antidote load
+fi
 
 # prepend Homebrew GNU coreutils to PATH (shadow BSD versions)
 # only active when the gnubin directories exist
@@ -87,14 +88,6 @@ fi
 if [[ $(command -v atuin) ]] then
   eval "$(atuin init zsh)"
   eval "$(atuin gen-completions --shell zsh)"
-fi
-
-# Antidote: the cure to slow zsh plugin management (https://antidote.sh)
-# Sourced from inside the brew guard above so reinstalls, zsh's
-# completion system, and antidote itself all use the same cached
-# $BREW_PREFIX instead of spawning `brew --prefix` again. (Closes #70)
-if type brew &>/dev/null; then
-  source "$BREW_PREFIX/opt/antidote/share/antidote/antidote.zsh" &>/dev/null && antidote load
 fi
 
 # Starship: Cross-Shell Prompt (https://starship.rs/)
