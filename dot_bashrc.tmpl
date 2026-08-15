@@ -4,6 +4,8 @@
 # Mirrors the monolithic dot_zshrc.tmpl approach: one file holds all
 # interactive bash config so login and non-login shells behave identically.
 
+shopt -s autocd
+
 # Source global definitions
 if [ -f /etc/bashrc ]; then
     . /etc/bashrc
