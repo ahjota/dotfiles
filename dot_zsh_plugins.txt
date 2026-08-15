@@ -28,6 +28,10 @@ givensuman/zsh-allclear
 # extract any archive with one command (x).
 ohmyzsh/ohmyzsh path:plugins/extract
 
+# typing ... expands to ../.., .... to ../../.., etc.
+# ahjota fork: twang817 load-order fixes + vi-mode chunk delete.
+ahjota/zsh-manydots-magic
+
 # uv auto-activate venvs in cwd.
 matthiasha/zsh-uv-env kind:defer
 
