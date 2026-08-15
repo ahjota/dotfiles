@@ -39,8 +39,8 @@ ahjota/zsh-manydots-magic
 matthiasha/zsh-uv-env kind:defer
 
 # auto-switch node.
-# gretky/n.zsh kind:defer
-# Disabled 2026-08-08: upstream's switch_n chpwd hook calls `exit 1` when
-# `n` isn't installed, which kills the shell on every cd. The conditional
-# loader in ~/.zshrc was removed in #88; a local rewrite sits unpublished
-# at ~/workspace/n.zsh.
+# Replaces gretzsky/n.zsh (disabled 2026-08-08). The upstream switch_n
+# chpwd hook called `exit 1` when `n` wasn't installed and killed the
+# shell on every cd; its conditional loader was removed in #88.
+# ahjota/n.zsh is the reworked fork that fixes the hook behavior.
+ahjota/n.zsh kind:defer
