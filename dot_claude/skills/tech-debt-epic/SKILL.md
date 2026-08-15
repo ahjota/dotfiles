@@ -12,6 +12,7 @@ This skill exists because the manual version is repetitive and easy to do badly:
 ## When to invoke
 
 Trigger on phrases like:
+
 - "create a tech-debt epic"
 - "find TODOs in this repo and file them as tickets"
 - "build an onboarding backlog of cleanup tasks"
@@ -41,7 +42,7 @@ Before writing the table, ask the user via `AskUserQuestion`. Don't make these u
 3. **Already-tracked TODOs** — Exclude entirely, Include as "see existing" notes, or Include normally.
 4. **JIRA target** (only if not already known from context) — project key, default Components, default Work Type, parent-epic preference (create new vs. add under existing).
 
-If the conversation already established defaults (e.g. the user said "project CFX, components DR CLI"), don't re-ask — confirm them once and proceed.
+If the conversation already established defaults (e.g. the user said "project ABC, components identity service"), don't re-ask — confirm them once and proceed.
 
 ## Phase 3 — Curate the table
 
@@ -52,10 +53,12 @@ Curate to the requested scope. Selection criteria for junior-friendly tickets:
 - **Verifiable** — outcome can be checked by running the project's lint and test commands, or a quick manual smoke-test.
 
 Exclude (and surface as "Out of Scope"):
+
 - Already-tracked TODOs (per the user's choice in Phase 2).
 - Items that are too large or architectural for a junior (multi-system rewrites, blocked-on-other-work, design decisions still open). List these separately so the user knows they were seen and consciously skipped.
 
 Effort conversion when the user picked **Hours** and the JIRA setup uses Story Points:
+
 - Default ratio: **2 SP per 8h dev day = 1 SP per 4h**.
 - Use the high end of the range (a "1–2h" task → 2h → 0.5 SP; "4–6h" → 6h → 1.5 SP).
 - Common mappings: 1–2h → 0.5 SP · 2–3h → 1 SP · 4–6h → 1.5 SP · 6–8h → 2 SP. The Story Points field is float-typed, so 0.5 and 1.5 are valid.
@@ -66,6 +69,7 @@ Effort conversion when the user picked **Hours** and the JIRA setup uses Story P
 Produce a markdown table with columns: `# | Title | Description | Possible Solution | Effort`.
 
 Below the table, include:
+
 - A **Verification** block — the lint / test / smoke-test commands the engineer should run for every ticket.
 - A **Suggested Sequencing** ordering — group easier tickets first so a junior builds skill before tackling the harder ones.
 - An **Out of Scope (Already Tracked)** subsection.
@@ -100,10 +104,11 @@ When approved:
 
 ## Worked example
 
-A complete example from the original session (CFX project, "DR CLI" component, Go codebase) is preserved in `references/worked-example.md`. Read it when:
+A complete example from the original session (*** project, component, Go codebase) is preserved in `references/worked-example.md`. Read it when:
+
 - You want to see a curated table with real entries (TODO inventory → 14 tickets).
 - You're unsure how aggressively to filter (the example exclusions show what "too big for a junior" looks like).
-- You're working on the same project (CFX) and want to reuse the field IDs and Components.
+- You're working on the same project and want to reuse the field IDs and Components.
 
 ## Common failure modes
 
