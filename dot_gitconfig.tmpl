@@ -20,11 +20,13 @@
 [branch]
 	autosetuprebase = always
 [credential]
-{{ if eq .chezmoi.os "darwin" }}
+{{- if eq .chezmoi.os "darwin" }}
 	helper = osxkeychain
-{{ else }}
-	helper = store
-{{ end }}
+	helper = cache --timeout=3600
+{{- else }}
+	helper = manager
+	helper = cache --timeout=3600
+{{- end }}
 [checkout]
 	defaultRemote = origin
 [commit]
