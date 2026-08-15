@@ -325,7 +325,57 @@ As of this writing, the repo uses:
   `dot_Rprofile.tmpl`.
 - **Pattern 2** in `.chezmoiignore` for `workspace/DataRobot` and
   `.claude/skills/tech-debt-epic`.
+- **Pattern 4** (age encryption) for `tech-debt-epic/references/` —
+  `worked-example.md` and `jira-fields.md` are stored as
+  `encrypted_dot_claude/skills/tech-debt-epic/references/` (ciphertext).
+  The `.chezmoiignore` gate (Pattern 2) ensures non-work machines never
+  attempt decryption.
 - `{{- if .dr }}` conditionals in `dot_zshrc.tmpl` for work shell setup
   (quantumrc, GPG, env script).
 
-Patterns 3-5 are documented for future use but not yet implemented.
+Patterns 3 and 5 are documented for future use but not yet implemented.
+
+## Encryption setup log
+
+The age encryption (Pattern 4) was set up as follows:
+
+1. **Install tools:** `brew install age git-filter-repo`
+2. **Generate age key:** `chezmoi age-keygen --output=~/.config/chezmoi/age-key.txt`
+3. **Add encryption config** to `.chezmoi.toml.tmpl`, gated on `.dr`:
+   ```toml
+   {{- if $isDRDevMachine }}
+   encryption = "age"
+   [age]
+       identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age-key.txt"
+       recipient = "age1..."
+   {{- end }}
+   ```
+4. **Encrypt files** using the `age` CLI (chezmoi's `age encrypt` requires
+   the config to be active, which it isn't on non-work machines):
+   ```sh
+   age -r <recipient> -a -o encrypted_dot_claude/.../file.md dot_claude/.../file.md
+   ```
+5. **Remove plaintext** source files (`git rm`).
+6. **Commit** the encrypted versions and config changes.
+7. **Purge history** with `git filter-repo`:
+   ```sh
+   git filter-repo --force --invert-paths \
+     --path dot_claude/skills/tech-debt-epic/references/worked-example.md \
+     --path dot_claude/skills/tech-debt-epic/references/jira-fields.md
+   ```
+   This rewrites all commits across all branches, changing every commit
+   hash. `git filter-repo` removes the `origin` remote; re-add it with
+   `git remote add origin <url>`.
+8. **Force-push** all branches. If `main` has branch protection rules
+   (non-fast-forward, pull-request required), temporarily disable the
+   ruleset on GitHub, force-push, then re-enable.
+
+### Key distribution
+
+The age key at `~/.config/chezmoi/age-key.txt` must be distributed to each
+work machine. It is not in the repo and cannot be recovered if lost. Back
+it up somewhere safe (1Password, etc.).
+
+On a new work machine, after `chezmoi init` (which prompts for `hasDrDev`
+and configures encryption), copy the key file to
+`~/.config/chezmoi/age-key.txt` and run `chezmoi apply`.
