@@ -54,13 +54,6 @@ then
   FPATH="$BREW_PREFIX/share/zsh/site-functions:${FPATH}"
 fi
 
-# Initialize zsh completion system early, before any tool (atuin,
-# antidote plugins, etc.) emits `compdef` calls. Without this,
-# `eval "$(atuin gen-completions --shell zsh)"` fails with
-# "command not found: compdef".
-autoload -Uz compinit
-compinit
-
 # prepend Homebrew GNU coreutils to PATH (shadow BSD versions)
 # only active when the gnubin directories exist
 if type brew &>/dev/null
