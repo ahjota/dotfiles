@@ -25,6 +25,9 @@ agkozak/zsh-z
 # clear history when you go $HOME.
 givensuman/zsh-allclear
 
+# extract any archive with one command (x).
+ohmyzsh/ohmyzsh path:plugins/extract
+
 # uv auto-activate venvs in cwd.
 matthiasha/zsh-uv-env kind:defer
 
