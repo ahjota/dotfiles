@@ -33,6 +33,16 @@ Package Manager: [Homebrew](https://brew.sh/)
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
+Interactive Shell, zsh: optional/recommended (see [#80](https://github.com/ahjota/dotfiles/issues/80)).
+
+```sh
+brew install zsh
+# or: sudo apt install zsh   # Fedora / Debian
+# When zsh is on PATH, interactive login bash sessions hand off to it
+# automatically (dot_bash_profile.tmpl). The passwd login-shell entry
+# stays bash so non-interactive tooling (sshd/cron/su) keeps working.
+```
+
 Plugin Manager, zsh: [Antidote](https://getantidote.github.io/)
 
 ```sh

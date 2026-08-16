@@ -1,7 +1,41 @@
 # .bash_profile — sourced by login bash shells.
-# All interactive config lives in ~/.bashrc (see dot_bashrc.tmpl).
-# This mirrors the stock /etc/skel/.bash_profile pattern so login shells
-# pick up the same aliases, thefuck, and starship init as non-login shells.
+#
+# The passwd login-shell entry stays `bash` on every host: bash is the
+# only shell guaranteed present on macOS (/bin/bash 3.2), Fedora
+# (/usr/bin/bash 5.x), and rescue/containers (bash). When zsh exists,
+# hand the interactive login session off to it; otherwise fall through
+# to ~/.bashrc. Tools that consult getent passwd directly (sshd for
+# git/rsync/sftp, cron, `su`, `newgrp`) therefore never see a missing
+# entry, while interactive users land in zsh when zsh is installed.
+#
+# Handoff is restricted to interactive shells via `[[ $- == *i* ]]`;
+# non-interactive login shells (`bash -l -c ...`, ssh-based tooling)
+# stay in bash. `bash --noprofile -i` skips this file entirely and is
+# the sanctioned escape hatch for a deliberate interactive bash.
+
+# Hand off to zsh when the session is interactive AND zsh is on PATH.
+# `command -v` resolves the runtime path so the same template works
+# across /bin/zsh (macOS), /usr/bin/zsh (Fedora), and Homebrew installs.
+# Export SHELL so the running session reports the truth; SHELL is
+# normally set by login(1) from the passwd entry, which here stays bash.
+# Split assign+export so `command -v`'s nonzero exit (e.g. race during
+# PATH mutation) does not get masked by the export shell builtin.
+if [[ $- == *i* ]] && command -v zsh >/dev/null 2>&1; then
+    SHELL="$(command -v zsh)"
+    export SHELL
+    exec zsh -l
+fi
+
+# macOS ships /bin/bash 3.2 and Apple's login banner prints a nag about
+# the default shell having moved to zsh. Silencing the warning keeps
+# the no-handoff path (zsh absent) quiet on macOS.
+if [[ "$(uname 2>/dev/null)" == "Darwin" ]]; then
+    export BASH_SILENCE_DEPRECATION_WARNING=1
+fi
+
+# No handoff (zsh absent, or non-interactive login) — source ~/.bashrc
+# for aliases, starship, thefuck, bash-completion, and the
+# ~/.shellrc.d/* snippets.
 if [ -f ~/.bashrc ]; then
     . ~/.bashrc
 fi
