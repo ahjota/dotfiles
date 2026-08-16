@@ -14,7 +14,7 @@ mattmc3/ez-compinit
 zsh-users/zsh-completions
 
 # suggest commands from history as you type.
-zsh-users/zsh-autosuggestions
+zsh-users/zsh-autosuggestions kind:defer
 
 # fast syntax highlighting for commands.
 zdharma-continuum/fast-syntax-highlighting kind:defer
