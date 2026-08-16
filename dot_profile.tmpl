@@ -2,7 +2,9 @@
 # atuin set this up so that I can have access
 # to my history outside of zsh.
 {{ if eq .chezmoi.os "darwin" -}}
+# shellcheck source=/dev/null
 [ -f "$HOME/.atuin/bin/env" ] && . "$HOME/.atuin/bin/env"
+# shellcheck source=/dev/null
 [ -f "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
 {{- end }}
 
