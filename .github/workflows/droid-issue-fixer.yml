@@ -2,7 +2,7 @@
 # =============================================================================
 # Scheduled + manual GitHub Action that runs `droid exec` headlessly to attempt
 # one open issue from this repo. The agent picks the most tractable issue,
-# implements a fix on a `droid/issue-<N>` branch, and commits it. Scripted
+# implements a fix on a `droid/ghi<N>-<short-slug>` branch, and commits it. Scripted
 # steps then push the branch and open a PR.
 #
 # Auth/quota/credit failures are quiet (green run + warning annotation) so a
@@ -100,19 +100,19 @@ jobs:
             exit 0
           fi
 
-          # Existing droid/issue-* branches (in-flight attempts).
+          # Existing droid/ghi* branches (in-flight attempts).
           gh api repos/${{ github.repository }}/branches \
             --paginate \
-            --jq '[.[] | select(.name | startswith("droid/issue-")) | .name]' \
+            --jq '[.[] | select(.name | startswith("droid/ghi")) | .name]' \
             > $WORKFLOW_TEMP/droid-branches.json || echo '[]' > $WORKFLOW_TEMP/droid-branches.json
 
-          # Open PRs whose head branch starts with droid/issue-.
+          # Open PRs whose head branch starts with droid/ghi.
           gh pr list --state open --json number,headRefName \
-            --jq '[.[] | select(.headRefName | startswith("droid/issue-")) | .headRefName]' \
+            --jq '[.[] | select(.headRefName | startswith("droid/ghi")) | .headRefName]' \
             > $WORKFLOW_TEMP/droid-pr-branches.json || echo '[]' > $WORKFLOW_TEMP/droid-pr-branches.json
 
           # Combine branches + PR head branches into one array, then extract
-          # the issue number from each (droid/issue-<N>...) and dedupe.
+          # the issue number from each (droid/ghi<N>...) and dedupe.
           # This gives us the set of issue numbers that already have an
           # in-flight droid attempt.
           jq -n \
@@ -403,8 +403,8 @@ jobs:
             exit 0
           fi
 
-          # Look for a droid/issue-* branch the agent created.
-          droid_branch=$(git branch --list 'droid/issue-*' | head -1 | sed 's/^[* ]*//')
+          # Look for a droid/ghi* branch the agent created.
+          droid_branch=$(git branch --list 'droid/ghi*' | head -1 | sed 's/^[* ]*//')
 
           if [ -z "$droid_branch" ]; then
             # Fallback: if the agent made uncommitted changes on the default
@@ -421,7 +421,7 @@ jobs:
 
             # Try to infer the issue number from the prompt data.
             issue_num=$(jq -r '.issues[0].number' $WORKFLOW_TEMP/actionable.json)
-            droid_branch="droid/issue-${issue_num}-salvage"
+            droid_branch="droid/ghi${issue_num}-salvage"
             git checkout -b "$droid_branch"
             git add -A
             git commit -m "fix: droid attempt for issue #${issue_num}" || true
@@ -431,7 +431,7 @@ jobs:
           git push origin "$droid_branch"
 
           # Extract the issue number from the branch name for PR linking.
-          issue_num=$(echo "$droid_branch" | sed -n 's|.*droid/issue-\([0-9]*\).*|\1|p')
+          issue_num=$(echo "$droid_branch" | sed -n 's|.*droid/ghi\([0-9]*\).*|\1|p')
 
           # Build the PR body from the droid-fix PR template, substituting
           # HTML-comment placeholders with live values. Using a template
