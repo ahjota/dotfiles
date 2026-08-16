@@ -434,7 +434,7 @@ jobs:
       # ------------------------------------------------------------------
       - name: Upload droid session artifacts
         if: steps.collect.outputs.has_work == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: droid-session-${{ github.run_id }}
           path: |
