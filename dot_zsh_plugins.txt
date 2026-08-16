@@ -2,7 +2,8 @@
 
 # This is used by antidote. Do you have it?
 # ref: https://antidote.sh/
-# Also, antidote pins everything. Did you update recently?
+# Change something, `antidote load`.
+# Also, antidote pins everything. `antidote update`.
 
 # Basic Zsh plugins are defined in user/repo format
 
