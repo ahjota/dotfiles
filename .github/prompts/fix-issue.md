@@ -49,7 +49,7 @@ create no branch, and exit. That is an acceptable outcome.
 
 ## Implement the fix
 
-1. Create a branch named `droid/issue-<N>-<short-slug>` where `<N>` is the
+1. Create a branch named `droid/ghi<N>-<short-slug>` where `<N>` is the
    issue number and `<short-slug>` is a 2-4 word kebab-case description.
 2. Make the **minimal** change that satisfies the issue's acceptance
    criteria. Do not refactor unrelated code.
