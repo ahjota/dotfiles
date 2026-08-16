@@ -211,6 +211,9 @@ jobs:
 
           case "$RUNNER_OS" in
             macOS)
+              # Silence Homebrew tap-trust warnings on runners that have
+              # untrusted taps configured (e.g., aws/tap).
+              export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
               brew install shellcheck
               ;;
             Windows)
