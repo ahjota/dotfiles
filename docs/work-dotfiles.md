@@ -4,21 +4,24 @@ Runbook for keeping work-related dotfile content (internal hostnames,
 work-only aliases, IT-mandated scripts) out of non-work machines and out of
 the public repo where appropriate.
 
-## The gate variable: `.dr`
+## The gate variable: `.work`
 
-All work conditional logic keys off a single boolean, `data.dr`, set during
+All work conditional logic keys off a single boolean, `data.work`, set during
 `chezmoi init`:
 
 ```toml
 # .chezmoi.toml.tmpl
-{{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }}
+{{ $isWorkMachine := promptBoolOnce . "hasDrDev" "Is this a work machine" }}
 # ...
 [data]
-dr = {{ $isDRDevMachine }}
+work = {{ $isWorkMachine }}
 ```
 
-On non-work machines, `dr = false`. Every work-specific pattern below checks
-this flag. The variable name is `.dr` (short for DataRobot), not `.work`.
+`hasDrDev` is the historical prompt key (kept stable so existing chezmoi
+users are not re-prompted); the prompt text and the data field are now both
+generic. On non-work machines, `work = false`. Every work-specific pattern
+below checks this flag. Templates use `{{ .work }}` (or `{{ .isWorkMachine }}`
+inside the config); there is no `.dr` alias.
 
 Reference: [Configuration file / Template data](https://www.chezmoi.io/reference/configuration-file/),
 [`promptBoolOnce`](https://www.chezmoi.io/reference/templates/functions/#promptboolonce)
@@ -36,13 +39,13 @@ variable. The repo contains only `{{ .hostname }}`, never the value.
 
 ### Setup
 
-Add a `promptStringOnce` entry, gated on `.dr` so non-work machines are
+Add a `promptStringOnce` entry, gated on `.work` so non-work machines are
 never prompted:
 
 ```toml
 # .chezmoi.toml.tmpl
 {{ $artifactoryHost := "" }}
-{{- if $isDRDevMachine }}
+{{- if $isWorkMachine }}
 {{- $artifactoryHost = promptStringOnce . "artifactoryHost" "DataRobot Artifactory hostname" }}
 {{- end }}
 
@@ -55,17 +58,17 @@ artifactoryHost = {{ $artifactoryHost | quote }}
 ```ini
 # dot_pip/pip.conf.tmpl
 [install]
-{{- if .dr }}
+{{- if .work }}
 trusted-host = {{ .artifactoryHost }}
 {{- end }}
 index-url = https://pypi.org/simple
-{{- if .dr }}
+{{- if .work }}
 extra-index-url =
         https://{{ .artifactoryHost }}/artifactory/api/pypi/python-all/simple
 {{- end }}
 ```
 
-On non-work machines: `artifactoryHost` is `""`, the `{{- if .dr }}`
+On non-work machines: `artifactoryHost` is `""`, the `{{- if .work }}`
 blocks are skipped, and the rendered file is a plain pip.conf with no work
 references.
 
@@ -74,7 +77,7 @@ references.
 Extend the same pattern for each internal hostname:
 
 ```toml
-{{- if $isDRDevMachine }}
+{{- if $isWorkMachine }}
 {{- $artifactoryHost = promptStringOnce . "artifactoryHost" "Artifactory hostname" }}
 {{- $jenkinsHost    = promptStringOnce . "jenkinsHost" "Jenkins hostname" }}
 {{- $internalGitHost = promptStringOnce . "internalGitHost" "Internal Git hostname" }}
@@ -105,7 +108,7 @@ Create the file in the chezmoi source tree as normal. Then add a gate in
 
 ```
 # .chezmoiignore
-{{- if not .dr }}
+{{- if not .work }}
 .shellrc.d/56-work-aliases.sh
 .local/bin/work-only-script
 {{- end }}
@@ -118,7 +121,7 @@ Patterns match **target paths** (e.g. `.shellrc.d/56-work-aliases.sh`, not
 
 ```sh
 # dot_shellrc.d/56-work-aliases.sh
-{{- if .dr }}
+{{- if .work }}
 alias jenkins="open https://{{ .jenkinsHost }}"
 alias drdep="dr deployment"
 {{- end }}
@@ -145,13 +148,13 @@ repo, and need to stay in sync independently of your dotfiles.
 
 `.chezmoiexternal` pulls files from external sources directly to the target
 directory. The content never enters your dotfiles repo. Use a `.tmpl`
-extension on the external config to gate it on `.dr`.
+extension on the external config to gate it on `.work`.
 
 ### Setup
 
 ```toml
 # .chezmoiexternal.toml.tmpl
-{{- if .dr }}
+{{- if .work }}
 [".local/bin/company-vpn-check"]
     type = "file"
     url = "https://internal-git/it-scripts/raw/main/company-vpn-check"
@@ -165,7 +168,7 @@ extension on the external config to gate it on `.dr`.
 ```
 
 On work machines, chezmoi pulls these files to `~/.local/bin/` and refreshes
-them at the specified interval. On non-work machines, the `{{- if .dr }}`
+them at the specified interval. On non-work machines, the `{{- if .work }}`
 gate means the externals are not even declared.
 
 Force a refresh with:
@@ -237,8 +240,8 @@ plain file on non-work machines and an encrypted work version, use
 
 ```
 # .chezmoiignore
-{{- if .dr }}.pip/pip.conf{{- end }}        # ignore plain on work machines
-{{- if not .dr }}.pip/pip.conf{{- end }}    # ignore encrypted on non-work
+{{- if .work }}.pip/pip.conf{{- end }}        # ignore plain on work machines
+{{- if not .work }}.pip/pip.conf{{- end }}    # ignore encrypted on non-work
 ```
 
 - `dot_pip/pip.conf` — plain static file, basic config, no work content.
@@ -289,7 +292,7 @@ Pull a private work repo into a target subdirectory:
 
 ```toml
 # .chezmoiexternal.toml.tmpl
-{{- if .dr }}
+{{- if .work }}
 [".local/share/work-tools"]
     type = "git-repo"
     url = "https://internal-git/work-dotfiles.git"
@@ -330,7 +333,7 @@ As of this writing, the repo uses:
   `encrypted_dot_claude/skills/tech-debt-epic/references/` (ciphertext).
   The `.chezmoiignore` gate (Pattern 2) ensures non-work machines never
   attempt decryption.
-- `{{- if .dr }}` conditionals in `dot_zshrc.tmpl` for work shell setup
+- `{{- if .work }}` conditionals in `dot_zshrc.tmpl` for work shell setup
   (quantumrc, GPG, env script).
 
 Patterns 3 and 5 are documented for future use but not yet implemented.
@@ -341,9 +344,9 @@ The age encryption (Pattern 4) was set up as follows:
 
 1. **Install tools:** `brew install age git-filter-repo`
 2. **Generate age key:** `chezmoi age-keygen --output=~/.config/chezmoi/age-key.txt`
-3. **Add encryption config** to `.chezmoi.toml.tmpl`, gated on `.dr`:
+3. **Add encryption config** to `.chezmoi.toml.tmpl`, gated on `.work`:
    ```toml
-   {{- if $isDRDevMachine }}
+   {{- if $isWorkMachine }}
    encryption = "age"
    [age]
        identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age-key.txt"

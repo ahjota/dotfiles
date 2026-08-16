@@ -1,10 +1,14 @@
+# `isWorkMachine` is the gating variable for work-only content (renamed
+# from `hasDrDev`/`isDRDevMachine`: any work machine counts, not just
+# DataRobot). The prompt key is reused so existing chezmoi users are not
+# re-prompted; the prompt text is updated to reflect the broader meaning.
+{{ $isWorkMachine := promptBoolOnce . "hasDrDev" "Is this a work machine" }}
 {{ $email := promptStringOnce . "email" "Email address" }}
-{{ $isDRDevMachine := promptBoolOnce . "hasDrDev" "Develop DataRobot on this machine" }}
 {{ $isIterm2Managed := promptBoolOnce . "iterm2" "Manage iTerm2 preferences with chezmoi" }}
 {{ $isJavaDev := promptBoolOnce . "devJava" "Do Java development on this machine" }}
 
 {{ $artifactoryHost := "" }}
-{{- if $isDRDevMachine }}
+{{- if $isWorkMachine }}
 {{- $artifactoryHost = promptStringOnce . "artifactoryHost" "DataRobot Artifactory hostname" }}
 {{- end }}
 
@@ -21,16 +25,20 @@
 # non-work machines never need to decrypt (the files are .chezmoiignore'd).
 # Key lives at ~/.config/chezmoi/age-key.txt (not in the repo). See
 # docs/work-dotfiles.md Pattern 4 for details.
-{{- if $isDRDevMachine }}
+{{- if $isWorkMachine }}
 encryption = "age"
 [age]
     identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age-key.txt"
     recipient = "age1d4q6vwcrd8j23hlxvrwz80pce45gqg8rk6z8huufh6w7u735favq4jam8y"
 {{- end }}
 
+# `work` is the gate variable for work-only content. Renamed from `dr`
+# because the meaning is broader than DataRobot development: any work
+# machine is gated through this flag. Templates use `{{ .work }}`
+# directly (no `.dr` alias). See docs/work-dotfiles.md.
 [data]
 email = {{ $email | quote }}
-dr = {{ $isDRDevMachine }}
+work = {{ $isWorkMachine }}
 iterm2 = {{ $isIterm2Managed }}
 artifactoryHost = {{ $artifactoryHost | quote }}
 # Major version of the bash in PATH at `chezmoi init` time (0 if bash is
