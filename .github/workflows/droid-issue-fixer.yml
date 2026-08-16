@@ -185,7 +185,7 @@ jobs:
           printf '%s\n' \
             '[data]' \
             'email = "droid-ci@example.com"' \
-            'dr = false' \
+            'work = false' \
             'iterm2 = false' \
             'artifactoryHost = ""' \
             '[data.dev]' \
