@@ -10,6 +10,9 @@
 # don't delete this again.
 mattmc3/ez-compinit
 
+# extra completion definitions (docker, aws, brew, etc.).
+zsh-users/zsh-completions
+
 # suggest commands from history as you type.
 zsh-users/zsh-autosuggestions
 
