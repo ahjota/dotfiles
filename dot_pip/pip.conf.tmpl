@@ -1,9 +1,9 @@
 [install]
-{{- if .dr }}
+{{- if .work }}
 trusted-host = {{ .artifactoryHost }}
 {{- end }}
 index-url = https://pypi.org/simple
-{{- if .dr }}
+{{- if .work }}
 extra-index-url =
         https://{{ .artifactoryHost }}/artifactory/api/pypi/python-all/simple
         https://{{ .artifactoryHost }}/artifactory/api/pypi/python-dev/simple
@@ -11,7 +11,7 @@ extra-index-url =
 {{- end }}
 
 [global]
-{{- if .dr }}
+{{- if .work }}
 # below e-idx required for JJB venv
 extra-index-url =
         https://{{ .artifactoryHost }}/artifactory/api/pypi/python-all/simple
