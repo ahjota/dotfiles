@@ -12,12 +12,11 @@ if [ -f /etc/bashrc ]; then
 fi
 
 # User specific environment
-# Use a case statement instead of [[ =~ ]] so the PATH prefix is matched
-# literally without shellcheck flagging a quoted regex (SC2076).
-case ":${PATH}:" in
-    *:"$HOME/.local/bin:$HOME/bin:") ;;
-    *) PATH="$HOME/.local/bin:$HOME/bin:$PATH" ;;
-esac
+# Use bash glob matching instead of [[ =~ ]] so shellcheck does not flag
+# a quoted regex (SC2076).
+if [[ ":${PATH}:" != *:"$HOME/.local/bin:$HOME/bin:"* ]]; then
+    PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+fi
 export PATH
 
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
