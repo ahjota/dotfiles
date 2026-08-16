@@ -59,23 +59,24 @@ jobs:
         shell: bash
     steps:
       # ------------------------------------------------------------------
-      # 1. Set up a cross-platform temp directory inside the workspace
+      # 1. Checkout
+      # ------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------
+      # 2. Set up a cross-platform temp directory inside the workspace
       # ------------------------------------------------------------------
       - name: Set workflow temp directory
         id: temp
         run: |
           # Keep temp files under the repo workspace so the same relative
-          # paths work on Linux, macOS, and Windows (Git Bash).
+          # paths work on Linux, macOS, and Windows (Git Bash). Run this
+          # after checkout so actions/checkout does not wipe the directory.
           WORKFLOW_TEMP="$GITHUB_WORKSPACE/.droid-temp"
           mkdir -p "$WORKFLOW_TEMP"
           echo "WORKFLOW_TEMP=$WORKFLOW_TEMP" >> "$GITHUB_ENV"
           echo "Workflow temp: $WORKFLOW_TEMP"
-
-      # ------------------------------------------------------------------
-      # 2. Checkout
-      # ------------------------------------------------------------------
-      - name: Checkout
-        uses: actions/checkout@v4
 
       # ------------------------------------------------------------------
       # 3. Collect open issues + in-flight droid attempts (no installs yet)
