@@ -382,6 +382,7 @@ jobs:
       # ------------------------------------------------------------------
       - name: Fetch session messages
         if: steps.collect.outputs.has_work == 'true'
+        continue-on-error: true
         env:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
         run: |
@@ -440,6 +441,7 @@ jobs:
       # ------------------------------------------------------------------
       - name: Upload droid session artifacts
         if: steps.collect.outputs.has_work == 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@v7.0.1
         with:
           name: droid-session-${{ github.run_id }}
