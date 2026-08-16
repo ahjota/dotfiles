@@ -8,7 +8,7 @@
 # Auth/quota/credit failures are quiet (green run + warning annotation) so a
 # depleted Factory account does not spam your inbox every week.
 # =============================================================================
-name: Issue Fixer Minion
+name: Builder Minion
 
 on:
   workflow_dispatch:
@@ -317,7 +317,7 @@ jobs:
               echo "Raw droid result (for diagnostics):"
               echo "$result_text"
               {
-                echo "## Issue Fixer Minion — quiet skip"
+                echo "## Builder Minion — quiet skip"
                 echo ""
                 echo "Droid exec returned a quota/auth/billing error and was skipped quietly."
                 echo ""
@@ -335,7 +335,7 @@ jobs:
             echo "hard_fail=true" >> "$GITHUB_OUTPUT"
             echo "::error::Droid exec failed (exit $droid_exit) with an unexpected error."
             {
-              echo "## Issue Fixer Minion — failed"
+              echo "## Builder Minion — failed"
               echo ""
               echo "Droid exec exited with code **$droid_exit**."
               echo ""
@@ -494,7 +494,7 @@ jobs:
             if git diff --quiet && git diff --cached --quiet; then
               echo "Agent declined — no branch and no changes."
               {
-                echo "## Issue Fixer Minion — declined"
+                echo "## Builder Minion — declined"
                 echo ""
                 echo "Droid exec completed successfully but made no changes (declined all issues)."
               } >> "$GITHUB_STEP_SUMMARY"
@@ -581,7 +581,7 @@ jobs:
           gh pr create --head "$droid_branch" --base main "${pr_flags[@]}"
 
           {
-            echo "## Issue Fixer Minion — PR opened"
+            echo "## Builder Minion — PR opened"
             echo ""
             echo "Branch: \`$droid_branch\`"
             if [ "$hard_fail" = "true" ]; then
