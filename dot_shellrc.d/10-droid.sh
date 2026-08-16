@@ -1,10 +1,10 @@
-# ~/.shellrc.d/10-droid.sh — unified droid wrapper.
+# shellcheck shell=bash
+# 10-droid.sh — unified droid wrapper.
+# Sourced by bash and zsh, so no shebang applies.
+# Portable to bash 3.2, bash 4+, and zsh 5.x.
 #
 # Smart droid wrapper: redirects to nearest trusted folder (or $SCRATCHPAD),
 # unless running a subcommand or an explicit --cwd is given.
-#
-# Deployed on every host (bash or zsh, any version).
-# Portable to bash 3.2, bash 4+, and zsh 5.x.
 #
 # Portable idioms used here:
 #   - Subcommand membership via case pattern on a space-padded literal,

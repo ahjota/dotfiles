@@ -12,7 +12,9 @@ if [ -f /etc/bashrc ]; then
 fi
 
 # User specific environment
-if ! [[ "$PATH" =~ "$HOME/.local/bin:$HOME/bin:" ]]; then
+# Use bash glob matching instead of [[ =~ ]] so shellcheck does not flag
+# a quoted regex (SC2076).
+if [[ ":${PATH}:" != *:"$HOME/.local/bin:$HOME/bin:"* ]]; then
     PATH="$HOME/.local/bin:$HOME/bin:$PATH"
 fi
 export PATH
@@ -35,6 +37,7 @@ fi
 if [ -d ~/.shellrc.d ]; then
     for rc in ~/.shellrc.d/*; do
         if [ -f "$rc" ]; then
+            # shellcheck source=/dev/null
             . "$rc"
         fi
     done

@@ -1,0 +1,52 @@
+# .github/workflows/lint-shell-templates.yml
+# =============================================================================
+# Non-blocking lint check for chezmoi shell templates.
+#
+# Renders templates with a non-interactive config and runs shellcheck / zsh -n
+# via scripts/lint-shell-templates.sh. Findings are reported in the job logs and
+# as annotations, but the workflow does not fail the PR.
+# =============================================================================
+name: Lint shell templates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  lint-shell-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Install chezmoi
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          "$HOME/.local/bin/chezmoi" --version
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck --version
+
+      - name: Lint shell templates
+        id: lint
+        # Non-blocking: report findings without failing the PR check.
+        continue-on-error: true
+        run: ./scripts/lint-shell-templates.sh
+
+      - name: Report lint status
+        if: always()
+        run: |
+          if [ "${{ steps.lint.outcome }}" = "success" ]; then
+            echo "Shell template lint passed."
+          else
+            echo "::warning::Shell template lint found issues. See the 'Lint shell templates' step for details."
+          fi

@@ -3,5 +3,6 @@
 # This mirrors the stock /etc/skel/.bash_profile pattern so login shells
 # pick up the same aliases, thefuck, and starship init as non-login shells.
 if [ -f ~/.bashrc ]; then
+    # shellcheck source=/dev/null
     . ~/.bashrc
 fi

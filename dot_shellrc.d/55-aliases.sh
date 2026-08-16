@@ -1,3 +1,7 @@
+# shellcheck shell=sh
+# 55-aliases.sh — shared aliases.
+# Sourced by bash and zsh, so no shebang applies.
+
 alias g="git"
 alias ll="ls -al"
 alias cm="chezmoi"
