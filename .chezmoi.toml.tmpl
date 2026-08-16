@@ -20,12 +20,12 @@
 {{ $bashMajor = output "bash" "-c" "echo ${BASH_VERSINFO[0]}" | trim | int -}}
 {{ end -}}
 
+{{- if $isWorkMachine }}
 # age encryption for work-only files that contain internal hostnames,
 # JIRA project keys, cloud IDs, etc. Only configured on work machines;
 # non-work machines never need to decrypt (the files are .chezmoiignore'd).
 # Key lives at ~/.config/chezmoi/age-key.txt (not in the repo). See
 # docs/work-dotfiles.md Pattern 4 for details.
-{{- if $isWorkMachine }}
 encryption = "age"
 [age]
     identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age-key.txt"
