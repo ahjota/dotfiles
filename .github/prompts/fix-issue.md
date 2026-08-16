@@ -35,12 +35,12 @@ Choose the **single most tractable** issue, using these criteria:
 
 - **Clear acceptance criteria** — the issue body describes what "done" looks
   like.
-- **Testable on the current runner** — the fix can be validated with `bash -n`,
-  `shellcheck`, or `chezmoi execute-template` (all guaranteed by the workflow).
-  Use `zsh -n` only when the selected runner has zsh available.
-- **No secrets, hardware, or platform-specific dependencies** — avoid issues
-  that require macOS-only tools, Windows-only tools, physical devices, or
-  credentials.
+- **Testable on the current runner** — the fix can be validated with the tools
+  available on the runner selected for this run. Prefer bash/zsh/chezmoi issues
+  on `ubuntu-latest`, macOS/dotfiles issues on `macos-latest`, and
+  PowerShell/Windows issues on `windows-latest`.
+- **No secrets, hardware, or physical devices** — avoid issues that require
+  credentials, hardware, or physical devices.
 - **Small scope** — prefer a targeted fix over a large refactor.
 
 If **no issue is tractable** under these constraints, stop. Make no changes,
@@ -55,9 +55,11 @@ create no branch, and exit. That is an acceptable outcome.
 3. Add or update **in-line comments and docstrings** for any code you write
    or edit, per the repo's AGENTS.md.
 4. Validate your changes:
-   - `bash -n` on any shell scripts you touched.
-   - `zsh -n` on any zsh files you touched (zsh is available).
+   - `bash -n` on any bash scripts you touched.
+   - `zsh -n` on any zsh files you touched (only when zsh is available).
    - `shellcheck` on any shell scripts you touched (always available).
+   - A PowerShell syntax check on any `.ps1` files you touched when running
+     on `windows-latest`.
    - `chezmoi execute-template --config "$CHEZMOI_CI_CONFIG" < file.tmpl`
      on any chezmoi template you touched.
 5. Commit with a **Conventional Commit** message:
