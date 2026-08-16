@@ -20,6 +20,17 @@ export PATH
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
 # export SYSTEMD_PAGER=
 
+# Linuxbrew: ensure Homebrew/Linuxbrew bins are on PATH for bash login shells
+# on Linux. `bash -l` reads `~/.bash_profile` (not `~/.profile`), and the
+# linuxbrew shellenv block in dot_profile.tmpl is therefore skipped on login
+# bash. Duplicating it here closes that gap without leaking the darwin-only
+# atuin/.local/bin env into the bash startup chain (fixes #55).
+{{ if ne .chezmoi.os "darwin" -}}
+if [ -d /home/linuxbrew/.linuxbrew ]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+{{ end }}
+
 # User specific aliases and functions
 if [ -d ~/.shellrc.d ]; then
     for rc in ~/.shellrc.d/*; do

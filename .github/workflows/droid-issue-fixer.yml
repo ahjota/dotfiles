@@ -382,6 +382,7 @@ jobs:
       # ------------------------------------------------------------------
       - name: Fetch session messages
         if: steps.collect.outputs.has_work == 'true'
+        continue-on-error: true
         env:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
         run: |
@@ -396,35 +397,41 @@ jobs:
 
           echo "Fetching messages for session $session_id..."
 
-          # Paginate through the session messages API and accumulate all
-          # messages into a single JSON array.
+          # Paginate through the session messages API and write each page to
+          # its own file. Using files instead of command-line arguments
+          # avoids "Argument list too long" errors when sessions have many
+          # messages.
+          pages_dir="$WORKFLOW_TEMP/messages-pages"
+          mkdir -p "$pages_dir"
+          rm -f "$pages_dir"/*.json
+
           cursor=""
-          all_messages="[]"
+          page_num=0
           while true; do
             url="https://api.factory.ai/api/v0/sessions/$session_id/messages?limit=100"
             if [ -n "$cursor" ]; then
               url="${url}&cursor=${cursor}"
             fi
 
-            page_file="$WORKFLOW_TEMP/messages-page.json"
+            page_file="$pages_dir/page-$(printf '%03d' $page_num).json"
             curl -fsSL \
               -H "Authorization: Bearer $FACTORY_API_KEY" \
               "$url" > "$page_file"
-
-            page_messages=$(jq '.messages // []' "$page_file" 2>/dev/null || echo '[]')
-            all_messages=$(jq -n \
-              --argjson all "$all_messages" \
-              --argjson msgs "$page_messages" \
-              '$all + $msgs')
 
             cursor=$(jq -r '.cursor // ""' "$page_file" 2>/dev/null || echo "")
             if [ -z "$cursor" ]; then
               break
             fi
+            page_num=$((page_num + 1))
           done
 
-          jq -n --argjson msgs "$all_messages" '{messages: $msgs}' \
-            > $WORKFLOW_TEMP/droid-messages.json
+          # Combine all pages into a single messages array.
+          if ls "$pages_dir"/page-*.json >/dev/null 2>&1; then
+            jq -s '{messages: [.[].messages[]?]}' "$pages_dir"/page-*.json \
+              > $WORKFLOW_TEMP/droid-messages.json
+          else
+            echo '{"messages":[]}' > $WORKFLOW_TEMP/droid-messages.json
+          fi
 
           msg_count=$(jq '.messages | length' $WORKFLOW_TEMP/droid-messages.json)
           echo "Fetched $msg_count messages."
@@ -434,6 +441,7 @@ jobs:
       # ------------------------------------------------------------------
       - name: Upload droid session artifacts
         if: steps.collect.outputs.has_work == 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@v7.0.1
         with:
           name: droid-session-${{ github.run_id }}
