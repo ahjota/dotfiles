@@ -10,6 +10,7 @@
 # Repository files that have no place on actual machines.
 README.md
 LICENSE
+scripts
 
 # GitHub Actions workflows and CI prompts are repo-internal only;
 # chezmoi should never deploy them into ~/.
