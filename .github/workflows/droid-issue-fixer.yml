@@ -299,6 +299,8 @@ jobs:
             quiet_signatures='Authentication failed|invalid.*key|insufficient|quota|limit exceeded|402|403|429|billing|plan limit|rate limit'
             if echo "$result_text" | grep -iqE "$quiet_signatures"; then
               echo "::warning::Droid exec hit an auth/quota/billing limit — skipping quietly."
+              echo "Raw droid result (for diagnostics):"
+              echo "$result_text"
               {
                 echo "## Droid Issue Fixer — quiet skip"
                 echo ""
