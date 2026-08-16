@@ -1,8 +1,8 @@
-# shellcheck shell=bash
+# shellcheck shell=sh
 # 01-env.sh — shared environment variables for bash and zsh.
-# Sourced (not executed) by both bash and zsh via the ~/.shellrc.d/ loops
-# in dot_bashrc.tmpl and dot_zshrc.tmpl, so no shebang applies; checked
-# against bash as the restrictive common denominator. Keep POSIX-compatible.
+# Sourced by both bash and zsh via the ~/.shellrc.d/ loops,
+# so no shebang applies.
+# Checked against POSIX sh as the restrictive common denominator.
 
 # Root of the user's workspace tree (projects, scratchpads, etc.).
 export WORKSPACE="${HOME}/workspace"

@@ -1,7 +1,7 @@
 # shellcheck shell=bash
-# ~/.shellrc.d/10-droid.sh — unified droid wrapper.
-# Sourced by both bash and zsh (never executed), so no shebang; checked
-# against bash as the restrictive common denominator.
+# 10-droid.sh — unified droid wrapper.
+# Sourced by both bash and zsh, so no shebang.
+# Checked against bash as the restrictive common denominator.
 #
 # Smart droid wrapper: redirects to nearest trusted folder (or $SCRATCHPAD),
 # unless running a subcommand or an explicit --cwd is given.
