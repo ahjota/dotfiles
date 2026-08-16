@@ -280,6 +280,7 @@ jobs:
           set +e
           droid exec \
             --auto medium \
+            --model kimi-k2.7-code \
             --output-format json \
             -f $WORKFLOW_TEMP/prompt.md \
             2>&1 | tee $WORKFLOW_TEMP/droid-out.json
