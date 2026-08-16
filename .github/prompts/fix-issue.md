@@ -57,8 +57,8 @@ create no branch, and exit. That is an acceptable outcome.
    or edit, per the repo's AGENTS.md.
 4. Validate your changes:
    - `bash -n` on any bash scripts you touched.
-   - `zsh -n` on any zsh files you touched (only when zsh is available).
-   - `shellcheck` on any shell scripts you touched (always available).
+   - `zsh -n` on any zsh files you touched (only if zsh is available).
+   - `shellcheck` on any shell scripts you touched.
    - A PowerShell syntax check on any `.ps1` files you touched when running
      on `windows-latest`.
    - `chezmoi execute-template --config "$CHEZMOI_CI_CONFIG" < file.tmpl`
