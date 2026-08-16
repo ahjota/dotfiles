@@ -32,10 +32,7 @@ encryption = "age"
     recipient = "age1d4q6vwcrd8j23hlxvrwz80pce45gqg8rk6z8huufh6w7u735favq4jam8y"
 {{- end }}
 
-# `work` is the gate variable for work-only content. Renamed from `dr`
-# because the meaning is broader than DataRobot development: any work
-# machine is gated through this flag. Templates use `{{ .work }}`
-# directly (no `.dr` alias). See docs/work-dotfiles.md.
+# `work` is the gate variable for work-only content. See docs/work-dotfiles.md.
 [data]
 email = {{ $email | quote }}
 work = {{ $isWorkMachine }}
