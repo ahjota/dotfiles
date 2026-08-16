@@ -6,3 +6,6 @@
 UNLICENSE-AUDIT.md
 # Bazzite test session — local notes, never committed
 NOTES-bazzite.md
+
+# Droid issue fixer workflow temp directory
+.droid-temp/
