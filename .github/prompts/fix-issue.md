@@ -36,13 +36,13 @@ Choose the **single most tractable** issue, using these criteria:
 - **Clear acceptance criteria** — the issue body describes what "done" looks
   like.
 - **Testable on the current runner** — the fix can be validated with the tools
-  available on the runner selected for this run. Prefer bash/zsh/chezmoi issues
-  on `ubuntu-latest`, macOS/dotfiles issues on `macos-latest`, and
+  available on the runner selected for this run. Prefer bash/zsh issues
+  on `ubuntu-latest`, macOS issues on `macos-latest`, and
   PowerShell/Windows issues on `windows-latest`.
 - **No secrets, hardware, or physical devices** — avoid issues that require
   credentials, hardware, or physical devices.
 - **Scope matches the issue** — prefer a targeted fix, but do not avoid a
-  larger refactor when the issue's acceptance criteria clearly require it.
+  larger refactor when the issue's acceptance criteria require it.
 
 If **no issue is tractable** under these constraints, stop. Make no changes,
 create no branch, and exit. That is an acceptable outcome.
@@ -65,7 +65,7 @@ create no branch, and exit. That is an acceptable outcome.
      on any chezmoi template you touched.
 5. Commit with a **Conventional Commit** message:
    - Subject: `<type>(<scope>): <subject>` (imperative mood, ≤50 chars).
-   - Body: explain *what* and *why*, wrapped at 72 chars.
+   - Body: explain _what_ and _why_, wrapped at 72 chars.
    - Footer: `Closes #<N>` or `Fixes #<N>`.
 
 ## Constraints
@@ -74,8 +74,8 @@ create no branch, and exit. That is an acceptable outcome.
 - **Never mention** pushing, opening PRs, or workflow mechanics in your
   result summary. Your result text is pasted verbatim into the PR body that
   the workflow opens for you — writing "left unpushed" or "no PR opened" in
-  that context is confusing and wrong. Describe *what you changed and why*,
-  not *what the workflow will do next*.
+  that context is confusing and wrong. Describe _what you changed and why_,
+  not _what the workflow will do next_.
 - **Never modify** `.github/workflows/droid-issue-fixer.yml` or this prompt
   file.
 - **Never create** or rotate secrets, API keys, or tokens.
