@@ -65,7 +65,21 @@ jobs:
         uses: actions/checkout@v7.0.1
 
       # ------------------------------------------------------------------
-      # 2. Set up a cross-platform temp directory inside the workspace
+      # 2. Configure git user for commits made inside the runner
+      # ------------------------------------------------------------------
+      # The droid agent commits changes directly in the workflow. Without an
+      # explicit identity, git falls back to the runner image defaults, which
+      # produced confusing authors like `Anka <runner@... .local>` on macOS.
+      # Set a stable identity before any commits happen.
+      # ------------------------------------------------------------------
+      - name: Configure git user
+        run: |
+          git config --global user.name "Droid"
+          git config --global user.email "droid@factory.ai"
+          echo "Git user: $(git config --global user.name) <$(git config --global user.email)>"
+
+      # ------------------------------------------------------------------
+      # 3. Set up a cross-platform temp directory inside the workspace
       # ------------------------------------------------------------------
       - name: Set workflow temp directory
         id: temp
@@ -79,7 +93,7 @@ jobs:
           echo "Workflow temp: $WORKFLOW_TEMP"
 
       # ------------------------------------------------------------------
-      # 3. Collect open issues + in-flight droid attempts (no installs yet)
+      # 4. Collect open issues + in-flight droid attempts (no installs yet)
       # ------------------------------------------------------------------
       - name: Collect open issues and in-flight droid PRs
         id: collect
@@ -153,7 +167,7 @@ jobs:
           echo "has_work=true" >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------------------
-      # 4. Install Droid CLI (only when there is actionable work)
+      # 5. Install Droid CLI (only when there is actionable work)
       # ------------------------------------------------------------------
       - name: Install Droid CLI
         if: steps.collect.outputs.has_work == 'true'
@@ -166,7 +180,7 @@ jobs:
           "$HOME/.local/bin/droid" --version
 
       # ------------------------------------------------------------------
-      # 5. Install chezmoi (for template validation)
+      # 6. Install chezmoi (for template validation)
       # ------------------------------------------------------------------
       - name: Install chezmoi
         if: steps.collect.outputs.has_work == 'true'
@@ -198,7 +212,7 @@ jobs:
           echo "CHEZMOI_CI_CONFIG=$HOME/.config/chezmoi/chezmoi.toml" >> "$GITHUB_ENV"
 
       # ------------------------------------------------------------------
-      # 6. Install shellcheck (for static analysis of shell scripts)
+      # 7. Install shellcheck (for static analysis of shell scripts)
       # ------------------------------------------------------------------
       - name: Install shellcheck
         if: steps.collect.outputs.has_work == 'true'
@@ -227,7 +241,7 @@ jobs:
           shellcheck --version
 
       # ------------------------------------------------------------------
-      # 7. Build the prompt file
+      # 8. Build the prompt file
       # ------------------------------------------------------------------
       - name: Build prompt
         if: steps.collect.outputs.has_work == 'true'
@@ -255,7 +269,7 @@ jobs:
           echo "Prompt file built ($(wc -l < $WORKFLOW_TEMP/prompt.md) lines)."
 
       # ------------------------------------------------------------------
-      # 8. Run droid exec (capture exit code, do not fail the step)
+      # 9. Run droid exec (capture exit code, do not fail the step)
       # ------------------------------------------------------------------
       - name: Run droid exec
         id: droid
@@ -274,7 +288,7 @@ jobs:
           exit 0
 
       # ------------------------------------------------------------------
-      # 9. Classify the droid exec result
+      # 10. Classify the droid exec result
       # ------------------------------------------------------------------
       - name: Classify droid result
         id: classify
@@ -338,7 +352,7 @@ jobs:
           echo "hard_fail=false" >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------------------
-      # 9b. Extract session metadata for the job summary + PR body
+      # 11. Extract session metadata for the job summary + PR body
       # ------------------------------------------------------------------
       - name: Extract session metadata
         id: metadata
@@ -378,7 +392,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # ------------------------------------------------------------------
-      # 9c. Fetch full session chat from the Factory API
+      # 12. Fetch full session chat from the Factory API
       # ------------------------------------------------------------------
       - name: Fetch session messages
         if: steps.collect.outputs.has_work == 'true'
@@ -437,7 +451,7 @@ jobs:
           echo "Fetched $msg_count messages."
 
       # ------------------------------------------------------------------
-      # 9d. Upload droid session artifacts
+      # 13. Upload droid session artifacts
       # ------------------------------------------------------------------
       - name: Upload droid session artifacts
         if: steps.collect.outputs.has_work == 'true'
@@ -453,7 +467,7 @@ jobs:
           retention-days: 30
 
       # ------------------------------------------------------------------
-      # 10. Finish: push branch + open PR (or salvage on error)
+      # 14. Finish: push branch + open PR (or salvage on error)
       # ------------------------------------------------------------------
       - name: Push branch and open PR
         if: steps.collect.outputs.has_work == 'true'
@@ -577,7 +591,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # ------------------------------------------------------------------
-      # 11. Fail the job if droid exec had an unexpected hard failure
+      # 15. Fail the job if droid exec had an unexpected hard failure
       # ------------------------------------------------------------------
       - name: Fail on hard error
         if: steps.classify.outputs.hard_fail == 'true'
