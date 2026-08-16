@@ -2,23 +2,22 @@
 # from `hasDrDev`/`isDRDevMachine`: any work machine counts, not just
 # DataRobot). The prompt key is reused so existing chezmoi users are not
 # re-prompted; the prompt text is updated to reflect the broader meaning.
-{{ $isWorkMachine := promptBoolOnce . "hasDrDev" "Is this a work machine" }}
-{{ $email := promptStringOnce . "email" "Email address" }}
-{{ $isIterm2Managed := promptBoolOnce . "iterm2" "Manage iTerm2 preferences with chezmoi" }}
-{{ $isJavaDev := promptBoolOnce . "devJava" "Do Java development on this machine" }}
-
-{{ $artifactoryHost := "" }}
-{{- if $isWorkMachine }}
-{{- $artifactoryHost = promptStringOnce . "artifactoryHost" "DataRobot Artifactory hostname" }}
-{{- end }}
+{{- $isWorkMachine := promptBoolOnce . "hasDrDev" "Is this a work machine" -}}
+{{- $email := promptStringOnce . "email" "Email address" -}}
+{{- $isIterm2Managed := promptBoolOnce . "iterm2" "Manage iTerm2 preferences with chezmoi" -}}
+{{- $isJavaDev := promptBoolOnce . "devJava" "Do Java development on this machine" -}}
+{{- $artifactoryHost := "" -}}
+{{- if $isWorkMachine -}}
+{{- $artifactoryHost = promptStringOnce . "artifactoryHost" "DataRobot Artifactory hostname" -}}
+{{- end -}}
 
 # Probe the major version of the bash found in PATH (macOS ships 3.2,
 # Fedora 4.0+). 0 means bash is absent. This runs only at `chezmoi init`
 # time; the result is persisted as data.bashMajor below.
-{{ $bashMajor := 0 -}}
-{{ if lookPath "bash" -}}
-{{ $bashMajor = output "bash" "-c" "echo ${BASH_VERSINFO[0]}" | trim | int -}}
-{{ end -}}
+{{- $bashMajor := 0 -}}
+{{- if lookPath "bash" -}}
+{{- $bashMajor = output "bash" "-c" "echo ${BASH_VERSINFO[0]}" | trim | int -}}
+{{- end -}}
 
 {{- if $isWorkMachine }}
 # age encryption for work-only files that contain internal hostnames,
@@ -30,7 +29,7 @@ encryption = "age"
 [age]
     identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age-key.txt"
     recipient = "age1d4q6vwcrd8j23hlxvrwz80pce45gqg8rk6z8huufh6w7u735favq4jam8y"
-{{- end }}
+{{ end }}
 
 # `work` is the gate variable for work-only content. See docs/work-dotfiles.md.
 [data]
