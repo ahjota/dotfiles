@@ -41,7 +41,8 @@ Choose the **single most tractable** issue, using these criteria:
   PowerShell/Windows issues on `windows-latest`.
 - **No secrets, hardware, or physical devices** — avoid issues that require
   credentials, hardware, or physical devices.
-- **Small scope** — prefer a targeted fix over a large refactor.
+- **Scope matches the issue** — prefer a targeted fix, but do not avoid a
+  larger refactor when the issue's acceptance criteria clearly require it.
 
 If **no issue is tractable** under these constraints, stop. Make no changes,
 create no branch, and exit. That is an acceptable outcome.
