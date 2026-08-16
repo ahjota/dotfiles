@@ -62,7 +62,7 @@ jobs:
       # 1. Checkout
       # ------------------------------------------------------------------
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       # ------------------------------------------------------------------
       # 2. Set up a cross-platform temp directory inside the workspace
