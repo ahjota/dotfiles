@@ -372,7 +372,59 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # ------------------------------------------------------------------
-      # 9c. Upload droid session artifacts
+      # 9c. Fetch full session chat from the Factory API
+      # ------------------------------------------------------------------
+      - name: Fetch session messages
+        if: steps.collect.outputs.has_work == 'true'
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          session_id="${{ steps.metadata.outputs.session_id }}"
+          if [ "$session_id" = "unknown" ] || [ -z "$session_id" ]; then
+            echo "No session ID — skipping message fetch."
+            echo '{"messages":[]}' > $WORKFLOW_TEMP/droid-messages.json
+            exit 0
+          fi
+
+          echo "Fetching messages for session $session_id..."
+
+          # Paginate through the session messages API and accumulate all
+          # messages into a single JSON array.
+          cursor=""
+          all_messages="[]"
+          while true; do
+            url="https://api.factory.ai/api/v0/sessions/$session_id/messages?limit=100"
+            if [ -n "$cursor" ]; then
+              url="${url}&cursor=${cursor}"
+            fi
+
+            page_file="$WORKFLOW_TEMP/messages-page.json"
+            curl -fsSL \
+              -H "Authorization: Bearer $FACTORY_API_KEY" \
+              "$url" > "$page_file"
+
+            page_messages=$(jq '.messages // []' "$page_file" 2>/dev/null || echo '[]')
+            all_messages=$(jq -n \
+              --argjson all "$all_messages" \
+              --argjson msgs "$page_messages" \
+              '$all + $msgs')
+
+            cursor=$(jq -r '.cursor // ""' "$page_file" 2>/dev/null || echo "")
+            if [ -z "$cursor" ]; then
+              break
+            fi
+          done
+
+          jq -n --argjson msgs "$all_messages" '{messages: $msgs}' \
+            > $WORKFLOW_TEMP/droid-messages.json
+
+          msg_count=$(jq '.messages | length' $WORKFLOW_TEMP/droid-messages.json)
+          echo "Fetched $msg_count messages."
+
+      # ------------------------------------------------------------------
+      # 9d. Upload droid session artifacts
       # ------------------------------------------------------------------
       - name: Upload droid session artifacts
         if: steps.collect.outputs.has_work == 'true'
@@ -382,6 +434,7 @@ jobs:
           path: |
             .droid-temp/droid-out.json
             .droid-temp/prompt.md
+            .droid-temp/droid-messages.json
           if-no-files-found: warn
           retention-days: 30
 
