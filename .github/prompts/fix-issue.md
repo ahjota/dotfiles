@@ -84,6 +84,5 @@ create no branch, and exit. That is an acceptable outcome.
   `macos-latest`, or `windows-latest` for each run; all three ship `git`,
   `gh`, and `bash`, and the workflow guarantees both **chezmoi** and
   **shellcheck**. `zsh` availability varies by runner.
-- Keep the changeset small and reviewable.
 
 ---
