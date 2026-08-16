@@ -20,9 +20,11 @@
 {{- end -}}
 
 [data]
+# `email` is the git-identity email
 email = {{ $email | quote }}
 # `work` is the gate variable for work-only content. See docs/work-dotfiles.md.
 work = {{ $isWorkMachine }}
+# whether iTerm2 configuration is managed by chezmoi
 iterm2 = {{ $isIterm2Managed }}
 # TODO artifactory does not need to live here; this is a work-related
 # data field.
