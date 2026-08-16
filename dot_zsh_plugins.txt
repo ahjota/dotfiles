@@ -38,9 +38,8 @@ ahjota/zsh-manydots-magic
 # uv auto-activate venvs in cwd.
 matthiasha/zsh-uv-env kind:defer
 
-# auto-switch node.
-# Replaces gretzsky/n.zsh (disabled 2026-08-08). The upstream switch_n
-# chpwd hook called `exit 1` when `n` wasn't installed and killed the
-# shell on every cd; its conditional loader was removed in #88.
-# ahjota/n.zsh is the reworked fork that fixes the hook behavior.
+# auto-switch node if n is installed.
+# Replaces gretzsky/n.zsh. The upstream switch_n chpwd hook called `exit 1`
+# when `n` wasn't installed and killed the shell on every cd. My fork
+# ahjota/n.zsh fixes this behavior.
 ahjota/n.zsh kind:defer
