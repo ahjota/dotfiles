@@ -28,19 +28,57 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  fix-issue:
+  # ------------------------------------------------------------------
+  # Randomly choose a runner for this workflow run. This spreads droid
+  # fixes across the three major platforms so dotfiles changes are
+  # validated on more than just Ubuntu. The choice is made once per run
+  # and passed to the actual fix job as an output.
+  # ------------------------------------------------------------------
+  choose-runner:
     runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.pick.outputs.runner }}
+    steps:
+      - name: Pick random runner
+        id: pick
+        run: |
+          runners=("ubuntu-latest" "macos-latest" "windows-latest")
+          idx=$((RANDOM % ${#runners[@]}))
+          echo "runner=${runners[$idx]}" >> "$GITHUB_OUTPUT"
+          echo "Selected runner: ${runners[$idx]}"
+
+  fix-issue:
+    needs: choose-runner
+    runs-on: ${{ needs.choose-runner.outputs.runner }}
     # A single droid exec run is usually well under 10 min, but give it room.
     timeout-minutes: 45
+    # Run all shell steps in bash so the same scripts work on Linux, macOS,
+    # and Windows (via Git Bash).
+    defaults:
+      run:
+        shell: bash
     steps:
       # ------------------------------------------------------------------
-      # 1. Checkout
+      # 1. Set up a cross-platform temp directory inside the workspace
+      # ------------------------------------------------------------------
+      - name: Set workflow temp directory
+        id: temp
+        run: |
+          # Keep temp files under the repo workspace so the same relative
+          # paths work on Linux, macOS, and Windows (Git Bash).
+          WORKFLOW_TEMP="$GITHUB_WORKSPACE/.droid-temp"
+          mkdir -p "$WORKFLOW_TEMP"
+          echo "WORKFLOW_TEMP=$WORKFLOW_TEMP" >> "$GITHUB_ENV"
+          echo "Workflow temp: $WORKFLOW_TEMP"
+
+      # ------------------------------------------------------------------
+      # 2. Checkout
       # ------------------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
       # ------------------------------------------------------------------
-      # 2. Collect open issues + in-flight droid attempts (no installs yet)
+      # 3. Collect open issues + in-flight droid attempts (no installs yet)
       # ------------------------------------------------------------------
       - name: Collect open issues and in-flight droid PRs
         id: collect
@@ -51,9 +89,9 @@ jobs:
 
           # Open issues as compact JSON (number, title, body, labels).
           gh issue list --state open --json number,title,body,labels \
-            > /tmp/open-issues.json
+            > $WORKFLOW_TEMP/open-issues.json
 
-          open_count=$(jq 'length' /tmp/open-issues.json)
+          open_count=$(jq 'length' $WORKFLOW_TEMP/open-issues.json)
           echo "Open issues found: $open_count"
 
           if [ "$open_count" -eq 0 ]; then
@@ -66,33 +104,33 @@ jobs:
           gh api repos/${{ github.repository }}/branches \
             --paginate \
             --jq '[.[] | select(.name | startswith("droid/issue-")) | .name]' \
-            > /tmp/droid-branches.json || echo '[]' > /tmp/droid-branches.json
+            > $WORKFLOW_TEMP/droid-branches.json || echo '[]' > $WORKFLOW_TEMP/droid-branches.json
 
           # Open PRs whose head branch starts with droid/issue-.
           gh pr list --state open --json number,headRefName \
             --jq '[.[] | select(.headRefName | startswith("droid/issue-")) | .headRefName]' \
-            > /tmp/droid-pr-branches.json || echo '[]' > /tmp/droid-pr-branches.json
+            > $WORKFLOW_TEMP/droid-pr-branches.json || echo '[]' > $WORKFLOW_TEMP/droid-pr-branches.json
 
           # Combine branches + PR head branches into one array, then extract
           # the issue number from each (droid/issue-<N>...) and dedupe.
           # This gives us the set of issue numbers that already have an
           # in-flight droid attempt.
           jq -n \
-            --slurpfile branches /tmp/droid-branches.json \
-            --slurpfile prs /tmp/droid-pr-branches.json \
+            --slurpfile branches $WORKFLOW_TEMP/droid-branches.json \
+            --slurpfile prs $WORKFLOW_TEMP/droid-pr-branches.json \
             '($branches[0] + $prs[0])
               | map(capture("issue-(?<n>[0-9]+)") | .n | tonumber)
-              | unique' > /tmp/inflight-nums.json
+              | unique' > $WORKFLOW_TEMP/inflight-nums.json
 
-          echo "In-flight droid issue numbers: $(cat /tmp/inflight-nums.json)"
+          echo "In-flight droid issue numbers: $(cat $WORKFLOW_TEMP/inflight-nums.json)"
 
           # Filter open issues: keep those whose number is NOT in the
           # in-flight set. Also build the inflight metadata for the prompt.
           jq -n \
-            --slurpfile issues /tmp/open-issues.json \
-            --slurpfile inflight /tmp/inflight-nums.json \
-            --slurpfile branches /tmp/droid-branches.json \
-            --slurpfile prs /tmp/droid-pr-branches.json \
+            --slurpfile issues $WORKFLOW_TEMP/open-issues.json \
+            --slurpfile inflight $WORKFLOW_TEMP/inflight-nums.json \
+            --slurpfile branches $WORKFLOW_TEMP/droid-branches.json \
+            --slurpfile prs $WORKFLOW_TEMP/droid-pr-branches.json \
             '{
               issues: ($issues[0] | map(select(.number as $n | $inflight[0] | index($n) | not))),
               inflight: {
@@ -100,9 +138,9 @@ jobs:
                 branches: $branches[0],
                 pr_branches: $prs[0]
               }
-            }' > /tmp/actionable.json
+            }' > $WORKFLOW_TEMP/actionable.json
 
-          actionable_count=$(jq '.issues | length' /tmp/actionable.json)
+          actionable_count=$(jq '.issues | length' $WORKFLOW_TEMP/actionable.json)
           echo "Actionable issues (excluding in-flight): $actionable_count"
 
           if [ "$actionable_count" -eq 0 ]; then
@@ -114,7 +152,7 @@ jobs:
           echo "has_work=true" >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------------------
-      # 3. Install Droid CLI (only when there is actionable work)
+      # 4. Install Droid CLI (only when there is actionable work)
       # ------------------------------------------------------------------
       - name: Install Droid CLI
         if: steps.collect.outputs.has_work == 'true'
@@ -127,7 +165,7 @@ jobs:
           "$HOME/.local/bin/droid" --version
 
       # ------------------------------------------------------------------
-      # 4. Install chezmoi (for template validation)
+      # 5. Install chezmoi (for template validation)
       # ------------------------------------------------------------------
       - name: Install chezmoi
         if: steps.collect.outputs.has_work == 'true'
@@ -159,14 +197,40 @@ jobs:
           echo "CHEZMOI_CI_CONFIG=$HOME/.config/chezmoi/chezmoi.toml" >> "$GITHUB_ENV"
 
       # ------------------------------------------------------------------
-      # 5. Build the prompt file
+      # 6. Install shellcheck (for static analysis of shell scripts)
+      # ------------------------------------------------------------------
+      - name: Install shellcheck
+        if: steps.collect.outputs.has_work == 'true'
+        run: |
+          if command -v shellcheck >/dev/null 2>&1; then
+            echo "shellcheck already available"
+            shellcheck --version
+            exit 0
+          fi
+
+          case "$RUNNER_OS" in
+            macOS)
+              brew install shellcheck
+              ;;
+            Windows)
+              choco install shellcheck
+              ;;
+            Linux)
+              # Should already be present on ubuntu-latest, but handle edge case.
+              sudo apt-get update && sudo apt-get install -y shellcheck
+              ;;
+          esac
+          shellcheck --version
+
+      # ------------------------------------------------------------------
+      # 7. Build the prompt file
       # ------------------------------------------------------------------
       - name: Build prompt
         if: steps.collect.outputs.has_work == 'true'
         run: |
           # Start with the reusable prompt template, then append the live
           # issue/PR data as JSON so the agent can pick from current state.
-          cat .github/prompts/fix-issue.md > /tmp/prompt.md
+          cat .github/prompts/fix-issue.md > $WORKFLOW_TEMP/prompt.md
           {
             echo ""
             echo "---"
@@ -174,20 +238,20 @@ jobs:
             echo "## Actionable issues (JSON)"
             echo ""
             echo '```json'
-            cat /tmp/actionable.json | jq '.issues'
+            cat $WORKFLOW_TEMP/actionable.json | jq '.issues'
             echo '```'
             echo ""
             echo "## In-flight droid attempts (JSON)"
             echo ""
             echo '```json'
-            cat /tmp/actionable.json | jq '.inflight'
+            cat $WORKFLOW_TEMP/actionable.json | jq '.inflight'
             echo '```'
-          } >> /tmp/prompt.md
+          } >> $WORKFLOW_TEMP/prompt.md
 
-          echo "Prompt file built ($(wc -l < /tmp/prompt.md) lines)."
+          echo "Prompt file built ($(wc -l < $WORKFLOW_TEMP/prompt.md) lines)."
 
       # ------------------------------------------------------------------
-      # 6. Run droid exec (capture exit code, do not fail the step)
+      # 8. Run droid exec (capture exit code, do not fail the step)
       # ------------------------------------------------------------------
       - name: Run droid exec
         id: droid
@@ -199,14 +263,14 @@ jobs:
           droid exec \
             --auto medium \
             --output-format json \
-            -f /tmp/prompt.md \
-            2>&1 | tee /tmp/droid-out.json
+            -f $WORKFLOW_TEMP/prompt.md \
+            2>&1 | tee $WORKFLOW_TEMP/droid-out.json
           droid_exit=$?
           echo "droid_exit=$droid_exit" >> "$GITHUB_OUTPUT"
           exit 0
 
       # ------------------------------------------------------------------
-      # 7. Classify the droid exec result
+      # 9. Classify the droid exec result
       # ------------------------------------------------------------------
       - name: Classify droid result
         id: classify
@@ -218,9 +282,9 @@ jobs:
           # Extract the result text and is_error flag from JSON output.
           result_text=""
           is_error="false"
-          if [ -f /tmp/droid-out.json ]; then
-            result_text=$(jq -r '.result // ""' /tmp/droid-out.json 2>/dev/null || echo "")
-            is_error=$(jq -r '.is_error // false' /tmp/droid-out.json 2>/dev/null || echo "false")
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            result_text=$(jq -r '.result // ""' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "")
+            is_error=$(jq -r '.is_error // false' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "false")
           fi
 
           # Auth/quota/billing quiet skip: only when droid exec actually
@@ -255,9 +319,9 @@ jobs:
               echo "Droid exec exited with code **$droid_exit**."
               echo ""
               # Show just the result text, not the full JSON blob.
-              if [ -f /tmp/droid-out.json ]; then
-                jq -r '.result // "(no result text)"' /tmp/droid-out.json 2>/dev/null \
-                  || cat /tmp/droid-out.json
+              if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+                jq -r '.result // "(no result text)"' $WORKFLOW_TEMP/droid-out.json 2>/dev/null \
+                  || cat $WORKFLOW_TEMP/droid-out.json
               else
                 echo "(no output captured)"
               fi
@@ -268,7 +332,7 @@ jobs:
           echo "hard_fail=false" >> "$GITHUB_OUTPUT"
 
       # ------------------------------------------------------------------
-      # 7b. Extract session metadata for the job summary + PR body
+      # 9b. Extract session metadata for the job summary + PR body
       # ------------------------------------------------------------------
       - name: Extract session metadata
         id: metadata
@@ -280,10 +344,10 @@ jobs:
           duration_ms=0
           num_turns=0
 
-          if [ -f /tmp/droid-out.json ]; then
-            session_id=$(jq -r '.session_id // "unknown"' /tmp/droid-out.json 2>/dev/null || echo "unknown")
-            duration_ms=$(jq -r '.duration_ms // 0' /tmp/droid-out.json 2>/dev/null || echo 0)
-            num_turns=$(jq -r '.num_turns // 0' /tmp/droid-out.json 2>/dev/null || echo 0)
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            session_id=$(jq -r '.session_id // "unknown"' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "unknown")
+            duration_ms=$(jq -r '.duration_ms // 0' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo 0)
+            num_turns=$(jq -r '.num_turns // 0' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo 0)
           fi
 
           echo "session_id=$session_id" >> "$GITHUB_OUTPUT"
@@ -297,9 +361,9 @@ jobs:
             echo ""
             echo "### Droid session details"
             echo ""
-            if [ -f /tmp/droid-out.json ]; then
+            if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
               jq -r 'del(.result) | to_entries[] | "- **\(.key):** \(.value | tostring)"' \
-                /tmp/droid-out.json 2>/dev/null || echo "- (failed to parse session metadata)"
+                $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "- (failed to parse session metadata)"
             else
               echo "- (no output captured)"
             fi
@@ -308,7 +372,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # ------------------------------------------------------------------
-      # 7c. Upload droid session artifacts
+      # 9c. Upload droid session artifacts
       # ------------------------------------------------------------------
       - name: Upload droid session artifacts
         if: steps.collect.outputs.has_work == 'true'
@@ -316,13 +380,13 @@ jobs:
         with:
           name: droid-session-${{ github.run_id }}
           path: |
-            /tmp/droid-out.json
-            /tmp/prompt.md
+            .droid-temp/droid-out.json
+            .droid-temp/prompt.md
           if-no-files-found: warn
           retention-days: 30
 
       # ------------------------------------------------------------------
-      # 8. Finish: push branch + open PR (or salvage on error)
+      # 10. Finish: push branch + open PR (or salvage on error)
       # ------------------------------------------------------------------
       - name: Push branch and open PR
         if: steps.collect.outputs.has_work == 'true'
@@ -356,7 +420,7 @@ jobs:
             fi
 
             # Try to infer the issue number from the prompt data.
-            issue_num=$(jq -r '.issues[0].number' /tmp/actionable.json)
+            issue_num=$(jq -r '.issues[0].number' $WORKFLOW_TEMP/actionable.json)
             droid_branch="droid/issue-${issue_num}-salvage"
             git checkout -b "$droid_branch"
             git add -A
@@ -373,7 +437,7 @@ jobs:
           # HTML-comment placeholders with live values. Using a template
           # file keeps the PR structure versioned and editable without
           # touching the workflow YAML.
-          pr_body="/tmp/pr-body.md"
+          pr_body="$WORKFLOW_TEMP/pr-body.md"
           cp .github/PULL_REQUEST_TEMPLATE/droid-fix.md "$pr_body"
 
           # Extract just the human-readable result text from the JSON,
@@ -381,32 +445,34 @@ jobs:
           # and thousands of chars of noise). Write to a temp file so sed
           # can insert it via the `r` command (safe for multi-line text
           # with special characters — no string interpolation needed).
-          if [ -f /tmp/droid-out.json ]; then
-            jq -r '.result // "(no result text)"' /tmp/droid-out.json 2>/dev/null \
-              > /tmp/droid-summary.txt || echo '(failed to parse droid output)' > /tmp/droid-summary.txt
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            jq -r '.result // "(no result text)"' $WORKFLOW_TEMP/droid-out.json 2>/dev/null \
+              > $WORKFLOW_TEMP/droid-summary.txt || echo '(failed to parse droid output)' > $WORKFLOW_TEMP/droid-summary.txt
           else
-            echo '(no output captured)' > /tmp/droid-summary.txt
+            echo '(no output captured)' > $WORKFLOW_TEMP/droid-summary.txt
           fi
 
           # Substitute the droid summary (multi-line → sed `r` + `d`).
-          sed -i '/<!-- DROID_SUMMARY -->/{
-            r /tmp/droid-summary.txt
-            d
-          }' "$pr_body"
+          # Use -i.bak and remove the backup so the same syntax works on
+          # both GNU sed (Linux/Windows Git Bash) and BSD sed (macOS).
+          sed -i.bak -e "/<!-- DROID_SUMMARY -->/r $WORKFLOW_TEMP/droid-summary.txt" \
+            -e "/<!-- DROID_SUMMARY -->/d" "$pr_body"
+          rm -f "$pr_body.bak"
 
           # Substitute the issue number (simple scalar).
-          sed -i "s|<!-- ISSUE_NUM -->|${issue_num:-?}|" "$pr_body"
+          sed -i.bak "s|<!-- ISSUE_NUM -->|${issue_num:-?}|" "$pr_body"
+          rm -f "$pr_body.bak"
 
           # Insert the hard-fail warning or remove the placeholder.
           if [ "$hard_fail" = "true" ]; then
             printf '> ⚠️ Droid exec errored during this run. This **draft** PR contains whatever work was salvaged — review carefully.\n' \
-              > /tmp/droid-warning.txt
-            sed -i '/<!-- DROID_WARNING -->/{
-              r /tmp/droid-warning.txt
-              d
-            }' "$pr_body"
+              > $WORKFLOW_TEMP/droid-warning.txt
+            sed -i.bak -e "/<!-- DROID_WARNING -->/r $WORKFLOW_TEMP/droid-warning.txt" \
+              -e "/<!-- DROID_WARNING -->/d" "$pr_body"
+            rm -f "$pr_body.bak"
           else
-            sed -i '/<!-- DROID_WARNING -->/d' "$pr_body"
+            sed -i.bak '/<!-- DROID_WARNING -->/d' "$pr_body"
+            rm -f "$pr_body.bak"
           fi
 
           # Ensure the `droid` label exists.
@@ -444,7 +510,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # ------------------------------------------------------------------
-      # 9. Fail the job if droid exec had an unexpected hard failure
+      # 11. Fail the job if droid exec had an unexpected hard failure
       # ------------------------------------------------------------------
       - name: Fail on hard error
         if: steps.classify.outputs.hard_fail == 'true'

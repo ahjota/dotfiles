@@ -35,10 +35,12 @@ Choose the **single most tractable** issue, using these criteria:
 
 - **Clear acceptance criteria** — the issue body describes what "done" looks
   like.
-- **Testable on Ubuntu** — the fix can be validated with `bash -n`, `zsh -n`,
-  `shellcheck`, or `chezmoi execute-template` (all available on this runner).
+- **Testable on the current runner** — the fix can be validated with `bash -n`,
+  `shellcheck`, or `chezmoi execute-template` (all guaranteed by the workflow).
+  Use `zsh -n` only when the selected runner has zsh available.
 - **No secrets, hardware, or platform-specific dependencies** — avoid issues
-  that require macOS-only tools, Windows, physical devices, or credentials.
+  that require macOS-only tools, Windows-only tools, physical devices, or
+  credentials.
 - **Small scope** — prefer a targeted fix over a large refactor.
 
 If **no issue is tractable** under these constraints, stop. Make no changes,
@@ -55,7 +57,7 @@ create no branch, and exit. That is an acceptable outcome.
 4. Validate your changes:
    - `bash -n` on any shell scripts you touched.
    - `zsh -n` on any zsh files you touched (zsh is available).
-   - `shellcheck` on any shell scripts you touched (if applicable).
+   - `shellcheck` on any shell scripts you touched (always available).
    - `chezmoi execute-template --config "$CHEZMOI_CI_CONFIG" < file.tmpl`
      on any chezmoi template you touched.
 5. Commit with a **Conventional Commit** message:
@@ -75,7 +77,10 @@ create no branch, and exit. That is an acceptable outcome.
   file.
 - **Never create** or rotate secrets, API keys, or tokens.
 - If the issue requires installing dependencies, prefer what is already on
-  the runner (`ubuntu-latest` ships `git`, `gh`, `zsh`, `bash`, `shellcheck`).
+  the runner. The workflow randomly selects one of `ubuntu-latest`,
+  `macos-latest`, or `windows-latest` for each run; all three ship `git`,
+  `gh`, and `bash`, and the workflow guarantees both **chezmoi** and
+  **shellcheck**. `zsh` availability varies by runner.
 - Keep the changeset small and reviewable.
 
 ---
