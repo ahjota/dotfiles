@@ -8,7 +8,6 @@ shopt -s autocd
 
 # Source global definitions
 if [ -f /etc/bashrc ]; then
-    # shellcheck source=/dev/null
     . /etc/bashrc
 fi
 
@@ -69,9 +68,7 @@ alias mcrun='mvn spring-boot:run -Dspring.profiles.active=LOCAL'
 # TODO How did you install Z? (override here if not installed via Homebrew.)
 if command -v brew >/dev/null 2>&1; then
     BREW_PREFIX="$(brew --prefix)"
-    # shellcheck source=/dev/null
     [ -f "$BREW_PREFIX/etc/profile.d/z.sh" ] && . "$BREW_PREFIX/etc/profile.d/z.sh"
-    # shellcheck source=/dev/null
     [ -f "$BREW_PREFIX/etc/bash_completion" ] && . "$BREW_PREFIX/etc/bash_completion"
 fi
 
@@ -86,7 +83,6 @@ fi
 # arg matches the documented invocation; the env script currently
 # ignores it but this stays forward-compatible.
 if [ -f "$HOME/.atuin/bin/env" ]; then
-    # shellcheck source=/dev/null
     . "$HOME/.atuin/bin/env" bash
 fi
 if command -v atuin >/dev/null 2>&1; then
