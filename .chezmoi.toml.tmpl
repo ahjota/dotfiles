@@ -1,50 +1,50 @@
-# `isWorkMachine` is the gating variable for work-only content (renamed
-# from `hasDrDev`/`isDRDevMachine`: any work machine counts, not just
-# DataRobot). The prompt key is reused so existing chezmoi users are not
-# re-prompted; the prompt text is updated to reflect the broader meaning.
-{{ $isWorkMachine := promptBoolOnce . "hasDrDev" "Is this a work machine" }}
-{{ $email := promptStringOnce . "email" "Email address" }}
-{{ $isIterm2Managed := promptBoolOnce . "iterm2" "Manage iTerm2 preferences with chezmoi" }}
-{{ $isJavaDev := promptBoolOnce . "devJava" "Do Java development on this machine" }}
+{{- $email := promptStringOnce . "email" "Email address" -}}
 
-{{ $artifactoryHost := "" }}
-{{- if $isWorkMachine }}
-{{- $artifactoryHost = promptStringOnce . "artifactoryHost" "DataRobot Artifactory hostname" }}
-{{- end }}
+{{/* `isWorkMachine` is the gating variable for work-only content. The prompt key hasDrDev is reused so existing chezmoi users are not re-prompted; the prompt text is updated to reflect the broader meaning. */}}
+{{- $isWorkMachine := promptBoolOnce . "hasDrDev" "Is this a work machine" -}}
 
-# Probe the major version of the bash found in PATH (macOS ships 3.2,
-# Fedora 4.0+). 0 means bash is absent. This runs only at `chezmoi init`
-# time; the result is persisted as data.bashMajor below.
-{{ $bashMajor := 0 -}}
-{{ if lookPath "bash" -}}
-{{ $bashMajor = output "bash" "-c" "echo ${BASH_VERSINFO[0]}" | trim | int -}}
-{{ end -}}
+{{- $isJavaDev := promptBoolOnce . "devJava" "Do Java development on this machine" -}}
 
-# age encryption for work-only files that contain internal hostnames,
-# JIRA project keys, cloud IDs, etc. Only configured on work machines;
-# non-work machines never need to decrypt (the files are .chezmoiignore'd).
-# Key lives at ~/.config/chezmoi/age-key.txt (not in the repo). See
-# docs/work-dotfiles.md Pattern 4 for details.
-{{- if $isWorkMachine }}
-encryption = "age"
-[age]
-    identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age-key.txt"
-    recipient = "age1d4q6vwcrd8j23hlxvrwz80pce45gqg8rk6z8huufh6w7u735favq4jam8y"
-{{- end }}
+{{- $isIterm2Managed := promptBoolOnce . "iterm2" "Manage iTerm2 preferences with chezmoi" -}}
 
-# `work` is the gate variable for work-only content. Renamed from `dr`
-# because the meaning is broader than DataRobot development: any work
-# machine is gated through this flag. Templates use `{{ .work }}`
-# directly (no `.dr` alias). See docs/work-dotfiles.md.
+
+{{- $artifactoryHost := "" -}}
+{{- if $isWorkMachine -}}
+{{- $artifactoryHost = promptStringOnce . "artifactoryHost" "DataRobot Artifactory hostname" -}}
+{{- end -}}
+
+{{/* Probe the major version of the bash found in PATH (macOS ships 3.2, Fedora 4.0+). 0 means bash is absent. This runs only at `chezmoi init` time; the result is persisted as data.bashMajor below. */}}
+{{- $bashMajor := 0 -}}
+{{- if lookPath "bash" -}}
+{{- $bashMajor = output "bash" "-c" "echo ${BASH_VERSINFO[0]}" | trim | int -}}
+{{- end -}}
+
 [data]
+# `email` is the git-identity email
 email = {{ $email | quote }}
+# `work` is the gate variable for work-only content. See docs/work-dotfiles.md.
 work = {{ $isWorkMachine }}
+# whether iTerm2 configuration is managed by chezmoi
 iterm2 = {{ $isIterm2Managed }}
+# TODO artifactory does not need to live here; this is a work-related
+# data field.
 artifactoryHost = {{ $artifactoryHost | quote }}
 # Major version of the bash in PATH at `chezmoi init` time (0 if bash is
 # absent). Kept for future bash-version-specific logic; nothing consumes
 # it yet. Re-run `chezmoi init` to refresh after upgrading bash.
 bashMajor = {{ $bashMajor }}
+
+{{- if $isWorkMachine }}
+# age encryption for work-only files that contain internal hostnames,
+# JIRA project keys, cloud IDs, etc. Only configured on work machines;
+# non-work machines never need to decrypt (the files are .chezmoiignore'd).
+# Key lives at ~/.config/chezmoi/age-key.txt (not in the repo). See
+# docs/work-dotfiles.md Pattern 4 for details.
+encryption = "age"
+[age]
+    identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age-key.txt"
+    recipient = "age1d4q6vwcrd8j23hlxvrwz80pce45gqg8rk6z8huufh6w7u735favq4jam8y"
+{{ end }}
 
 [data.dev]
 java = {{ $isJavaDev }}
