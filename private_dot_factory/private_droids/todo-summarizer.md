@@ -1,7 +1,7 @@
 ---
 name: todo-summarizer
 description: Finds TODOs in the current git branch and produces one <200-word, JIRA-ready issue draft per TODO.
-model: glm-5.1
+model: glm-5.2
 reasoningEffort: high
 tools: ["Read", "LS", "Glob", "Execute"]
 ---
