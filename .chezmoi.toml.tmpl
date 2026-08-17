@@ -19,6 +19,18 @@
 {{- $bashMajor = output "bash" "-c" "echo ${BASH_VERSINFO[0]}" | trim | int -}}
 {{- end -}}
 
+{{- if $isWorkMachine }}
+# age encryption for work-only files that contain internal hostnames,
+# JIRA project keys, cloud IDs, etc. Only configured on work machines;
+# non-work machines never need to decrypt (the files are .chezmoiignore'd).
+# Key lives at ~/.config/chezmoi/age-key.txt (not in the repo). See
+# docs/work-dotfiles.md Pattern 4 for details.
+encryption = "age"
+[age]
+    identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age-key.txt"
+    recipient = "age1d4q6vwcrd8j23hlxvrwz80pce45gqg8rk6z8huufh6w7u735favq4jam8y"
+{{ end }}
+
 [data]
 # `email` is the git-identity email
 email = {{ $email | quote }}
@@ -33,18 +45,6 @@ artifactoryHost = {{ $artifactoryHost | quote }}
 # absent). Kept for future bash-version-specific logic; nothing consumes
 # it yet. Re-run `chezmoi init` to refresh after upgrading bash.
 bashMajor = {{ $bashMajor }}
-
-{{- if $isWorkMachine }}
-# age encryption for work-only files that contain internal hostnames,
-# JIRA project keys, cloud IDs, etc. Only configured on work machines;
-# non-work machines never need to decrypt (the files are .chezmoiignore'd).
-# Key lives at ~/.config/chezmoi/age-key.txt (not in the repo). See
-# docs/work-dotfiles.md Pattern 4 for details.
-encryption = "age"
-[age]
-    identity = "{{ .chezmoi.homeDir }}/.config/chezmoi/age-key.txt"
-    recipient = "age1d4q6vwcrd8j23hlxvrwz80pce45gqg8rk6z8huufh6w7u735favq4jam8y"
-{{ end }}
 
 [data.dev]
 java = {{ $isJavaDev }}
