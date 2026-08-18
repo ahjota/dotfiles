@@ -47,4 +47,5 @@ Library/Preferences/com.googlecode.iterm2.plist
 {{- if not .work }}
 workspace/DataRobot
 .claude/skills/tech-debt-epic
+.shellrc.d/06-work-env.sh
 {{- end }}
