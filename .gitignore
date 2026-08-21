@@ -2,10 +2,11 @@
 #
 .envrc
 
-# local audit notes
-UNLICENSE-AUDIT.md
-# Bazzite test session — local notes, never committed
-NOTES-bazzite.md
+# Transient local notes and audit artifacts go in tmp/, never the repo root.
+tmp/*
+!tmp/.gitkeep
+tmp/UNLICENSE-AUDIT.md
+tmp/NOTES-bazzite.md
 
 # Droid issue fixer workflow temp directory
 .droid-temp/
