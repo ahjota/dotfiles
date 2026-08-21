@@ -1,0 +1,298 @@
+# .github/workflows/droid-security-review.yml
+# =============================================================================
+# Scheduled + manual GitHub Action that runs a full-codebase security review
+# via `droid exec` headlessly. The agent uses the built-in security-review
+# skill to scan shell templates, shell rc files, and chezmoi sources for
+# high-confidence findings, then opens a summary issue with the results.
+#
+# Auth/quota/credit failures are quiet (green run + warning annotation) so a
+# depleted Factory account does not spam the inbox every week.
+# =============================================================================
+name: Security Review Minion
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Runs weekly on Wednesdays at 10:37 UTC (off-the-hour to avoid GitHub cron spikes).
+    - cron: "37 10 * * 3"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: droid-security-review
+  cancel-in-progress: false
+
+jobs:
+  security-review:
+    runs-on: ubuntu-latest
+    # A full-repo security review is usually well under 15 min, but give it room.
+    timeout-minutes: 30
+    # Run all shell steps in bash so the same scripts work on Linux, macOS,
+    # and Windows (via Git Bash) if the runner is ever changed.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # ------------------------------------------------------------------
+      # 1. Checkout
+      # ------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      # ------------------------------------------------------------------
+      # 2. Set up a cross-platform temp directory inside the workspace
+      # ------------------------------------------------------------------
+      - name: Set workflow temp directory
+        id: temp
+        run: |
+          # Keep temp files under the repo workspace so the same relative
+          # paths work on Linux, macOS, and Windows (Git Bash). Run this
+          # after checkout so actions/checkout does not wipe the directory.
+          WORKFLOW_TEMP="$GITHUB_WORKSPACE/.droid-temp"
+          mkdir -p "$WORKFLOW_TEMP"
+          echo "WORKFLOW_TEMP=$WORKFLOW_TEMP" >> "$GITHUB_ENV"
+          echo "Workflow temp: $WORKFLOW_TEMP"
+
+      # ------------------------------------------------------------------
+      # 3. Install Droid CLI
+      # ------------------------------------------------------------------
+      - name: Install Droid CLI
+        run: |
+          curl -fsSL https://app.factory.ai/cli | sh
+          # The installer places the binary in ~/.local/bin (or similar);
+          # add it to PATH for this and subsequent steps.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # Verify it runs.
+          "$HOME/.local/bin/droid" --version
+
+      # ------------------------------------------------------------------
+      # 4. Run droid exec with the security-review skill
+      # ------------------------------------------------------------------
+      # Default (no --auto) is read-only. The prompt asks the agent to use
+      # the built-in security-review skill and write structured findings to
+      # a markdown artifact that the workflow can parse and publish.
+      # ------------------------------------------------------------------
+      - name: Run security review
+        id: droid
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set +e
+          droid exec \
+            --auto low \
+            --model kimi-k2.7-code \
+            --output-format json \
+            -f .github/prompts/security-review.md \
+            2>&1 | tee $WORKFLOW_TEMP/droid-out.json
+          droid_exit=$?
+          echo "droid_exit=$droid_exit" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # ------------------------------------------------------------------
+      # 5. Classify the droid exec result
+      # ------------------------------------------------------------------
+      - name: Classify droid result
+        id: classify
+        run: |
+          set -euo pipefail
+          droid_exit="${{ steps.droid.outputs.droid_exit }}"
+
+          # Extract the result text and is_error flag from JSON output.
+          result_text=""
+          is_error="false"
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            result_text=$(jq -r '.result // ""' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "")
+            is_error=$(jq -r '.is_error // false' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "false")
+          fi
+
+          # Auth/quota/billing quiet skip: only when droid exec actually
+          # failed (non-zero exit or is_error=true). A successful run may
+          # mention "FACTORY_API_KEY" or "credit" in its output without
+          # being an auth failure.
+          if [ "$droid_exit" -ne 0 ] || [ "$is_error" = "true" ]; then
+            quiet_signatures='Authentication failed|invalid.*key|insufficient|quota|limit exceeded|402|403|429|billing|plan limit|rate limit'
+            if echo "$result_text" | grep -iqE "$quiet_signatures"; then
+              echo "::warning::Droid exec hit an auth/quota/billing limit — skipping quietly."
+              echo "Raw droid result (for diagnostics):"
+              echo "$result_text"
+              {
+                echo "## Security Review Minion — quiet skip"
+                echo ""
+                echo "Droid exec returned a quota/auth/billing error and was skipped quietly."
+                echo ""
+                echo "**Result:** $result_text"
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "quiet_skip=true" >> "$GITHUB_OUTPUT"
+              echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo "quiet_skip=false" >> "$GITHUB_OUTPUT"
+
+          if [ "$droid_exit" -ne 0 ]; then
+            echo "hard_fail=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Droid exec failed (exit $droid_exit) with an unexpected error."
+            {
+              echo "## Security Review Minion — failed"
+              echo ""
+              echo "Droid exec exited with code **$droid_exit**."
+              echo ""
+              # Show just the result text, not the full JSON blob.
+              if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+                jq -r '.result // "(no result text)"' $WORKFLOW_TEMP/droid-out.json 2>/dev/null \
+                  || cat $WORKFLOW_TEMP/droid-out.json
+              else
+                echo "(no output captured)"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0  # Step succeeds so the finish step can salvage; job fails below.
+          fi
+
+          echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # 6. Extract session metadata for the job summary
+      # ------------------------------------------------------------------
+      - name: Extract session metadata
+        id: metadata
+        run: |
+          set -euo pipefail
+
+          session_id="unknown"
+          duration_ms=0
+          num_turns=0
+
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            session_id=$(jq -r '.session_id // "unknown"' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "unknown")
+            duration_ms=$(jq -r '.duration_ms // 0' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo 0)
+            num_turns=$(jq -r '.num_turns // 0' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo 0)
+          fi
+
+          echo "session_id=$session_id" >> "$GITHUB_OUTPUT"
+          echo "duration_ms=$duration_ms" >> "$GITHUB_OUTPUT"
+          echo "num_turns=$num_turns" >> "$GITHUB_OUTPUT"
+
+          # Dump all JSON fields (minus the verbose result text) to the job
+          # summary so model, usage, and other metadata are visible at a
+          # glance. Whatever the CLI includes will show up here.
+          {
+            echo ""
+            echo "### Droid session details"
+            echo ""
+            if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+              jq -r 'del(.result) | to_entries[] | "- **\(.key):** \(.value | tostring)"' \
+                $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "- (failed to parse session metadata)"
+            else
+              echo "- (no output captured)"
+            fi
+            echo ""
+            echo "_Full JSON output is available in the run artifacts._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 7. Stage prompt artifact
+      # ------------------------------------------------------------------
+      # The reusable prompt lives in the repo; copy it next to the droid
+      # output so the artifact upload step can include it with a stable
+      # relative path, matching the Issue Fixer's session artifact pattern.
+      # ------------------------------------------------------------------
+      - name: Stage prompt artifact
+        if: steps.classify.outputs.quiet_skip != 'true'
+        run: |
+          cp .github/prompts/security-review.md $WORKFLOW_TEMP/prompt.md
+          echo "Prompt staged at $WORKFLOW_TEMP/prompt.md"
+
+      # ------------------------------------------------------------------
+      # 8. Upload droid session artifacts
+      # ------------------------------------------------------------------
+      - name: Upload droid session artifacts
+        if: steps.classify.outputs.quiet_skip != 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: droid-security-review-${{ github.run_id }}
+          path: |
+            .droid-temp/droid-out.json
+            .droid-temp/prompt.md
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ------------------------------------------------------------------
+      # 9. Open a summary issue with the findings
+      # ------------------------------------------------------------------
+      - name: Open security review summary issue
+        if: steps.classify.outputs.quiet_skip != 'true' && steps.classify.outputs.hard_fail != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Extract the human-readable result text from the JSON output.
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            jq -r '.result // "(no result text)"' $WORKFLOW_TEMP/droid-out.json \
+              > $WORKFLOW_TEMP/findings.md
+          else
+            echo '(no output captured)' > $WORKFLOW_TEMP/findings.md
+          fi
+
+          # GitHub issue bodies are capped at roughly 65536 characters.
+          # Truncate with a pointer to the artifact if the report is huge.
+          max_body_len=60000
+          findings_len=$(wc -c < $WORKFLOW_TEMP/findings.md)
+          if [ "$findings_len" -gt "$max_body_len" ]; then
+            {
+              echo "Findings exceeded the GitHub issue body limit and were truncated."
+              echo "See the full droid-out.json artifact attached to workflow run ${{ github.run_id }}."
+              echo ""
+                } > $WORKFLOW_TEMP/issue-body.md
+            head -c "$max_body_len" $WORKFLOW_TEMP/findings.md >> $WORKFLOW_TEMP/issue-body.md
+            {
+              echo ""
+              echo "---"
+              echo ""
+              echo "_Truncated. Full output is in the run artifacts._"
+            } >> $WORKFLOW_TEMP/issue-body.md
+          else
+            cp $WORKFLOW_TEMP/findings.md $WORKFLOW_TEMP/issue-body.md
+          fi
+
+          # Prepend a small header so the issue is self-describing.
+          {
+            echo "## Automated full-codebase security review"
+            echo ""
+            echo "Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo ""
+            echo "Session: ${{ steps.metadata.outputs.session_id }}"
+            echo ""
+          } | cat - $WORKFLOW_TEMP/issue-body.md > $WORKFLOW_TEMP/issue-body-final.md
+
+          # Ensure the `security-review` label exists.
+          gh label create security-review \
+            --description "Findings from the droid-security-review workflow" \
+            --color B60205 --force 2>/dev/null || true
+
+          # Open the issue. Use a stable title with the run date so multiple
+          # runs in one day do not create duplicate issues.
+          run_date=$(date -u +%Y-%m-%d)
+          gh issue create \
+            --title "Security review findings — $run_date" \
+            --body-file $WORKFLOW_TEMP/issue-body-final.md \
+            --label security-review
+
+          {
+            echo "## Security Review Minion — issue opened"
+            echo ""
+            echo "Findings published as a GitHub issue with the \`security-review\` label."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 10. Fail the job if droid exec had an unexpected hard failure
+      # ------------------------------------------------------------------
+      - name: Fail on hard error
+        if: steps.classify.outputs.hard_fail == 'true'
+        run: |
+          echo "Droid exec had an unexpected hard failure — failing the job."
+          exit 1
