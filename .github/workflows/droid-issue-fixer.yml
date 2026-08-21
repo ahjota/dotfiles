@@ -22,7 +22,6 @@ permissions:
   contents: write
   pull-requests: write
   issues: read
-  workflows: write
 
 concurrency:
   group: droid-issue-fixer
