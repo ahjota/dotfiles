@@ -6,6 +6,12 @@ Global guidance for working with coding agents (Droid, Claude Code, OpenCode).
 
 Override default behavior: Always produce a git commit that explains the changeset after any substantive code change, without waiting for explicit request. Use the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/#specification) for commit messages. Be descriptive in the message.
 
+## Repository hygiene
+
+Write transient files (drafts, audit notes, agent outputs, local
+experiment logs) to the repository's `tmp/` directory. `tmp/` is gitignored
+so it stays out of commits; never drop throwaway files in the repo root.
+
 ## Documentation
 
 Override default behavior: Always provide in-line comments and docstrings for any code you write or edit.

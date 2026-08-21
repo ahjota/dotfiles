@@ -1,0 +1,3 @@
+# This file keeps the `tmp/` directory in the repo.
+# Place transient files (drafts, audit notes, agent outputs) here;
+# everything else in this directory is gitignored.
