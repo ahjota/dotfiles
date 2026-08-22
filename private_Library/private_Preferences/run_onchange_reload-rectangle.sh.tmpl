@@ -1,0 +1,23 @@
+#!/usr/bin/env zsh
+# Rectangle reload script.
+#
+# Chezmoi runs this script when the source state of the Rectangle preferences
+# plist changes. The embedded hash below makes the rendered script content
+# change whenever the plist changes, so the run_onchange_ prefix fires only on
+# actual updates.
+#
+# Hash: {{ include "private_Library/private_Preferences/com.knollsoft.Rectangle.plist" | sha256sum }}
+# See: https://www.chezmoi.io/user-guide/use-scripts-to-perform-actions/
+
+# Only run on macOS. The enclosing source path is already ignored on non-Darwin
+# hosts, but guard just in case this script is ever copied or run standalone.
+if [[ "$(uname -s)" != "Darwin" ]]; then
+  exit 0
+fi
+
+# Relaunch Rectangle so it reloads the updated preferences from
+# ~/Library/Preferences/com.knollsoft.Rectangle.plist. Rectangle is not a
+# critical service; ignore errors if it is not installed or not running.
+osascript -e 'tell application "Rectangle" to quit' >/dev/null 2>&1 || true
+sleep 1
+osascript -e 'tell application "Rectangle" to activate' >/dev/null 2>&1 || true

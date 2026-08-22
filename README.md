@@ -126,6 +126,8 @@ during `chezmoi init` to have the preferences plist applied to
 [Rectangle](https://rectangleapp.com/) preferences are managed by chezmoi.
 The preferences plist is applied to
 `~/Library/Preferences/com.knollsoft.Rectangle.plist` on macOS.
+A `run_onchange_` script relaunches Rectangle after the plist changes so the
+new settings take effect immediately.
 
 ## Features
 
