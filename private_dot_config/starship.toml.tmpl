@@ -1,5 +1,5 @@
 format = """
-╭ $all${custom.git_scope}$fill$kubernetes${custom.drconfig}\
+╭ $all${custom.git_scope}$fill$kubernetes\
 $line_break\
 ╰─$jobs\
 $battery\
@@ -10,6 +10,8 @@ $time\
 $character"""
 
 right_format = """
+$custom.drcli\
+$custom.drconfig\
 $time\
 $shlvl"""
 
@@ -93,6 +95,15 @@ format = "👾 $output"
 description = "The contents of drconfig.yaml"
 shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-eu"]
 when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
+
+[custom.drcli]
+# Show the DataRobot CLI version when `dr` and `jq` are on PATH.
+# Reuses the same 👾 / alien_monster / U+1F47E icon as custom.drconfig.
+command = 'dr self version --output-format=json 2>/dev/null | jq -r ".version // .cliVersion // .clientVersion // empty" 2>/dev/null'
+format = "👾 $output "
+description = "DataRobot CLI version"
+shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-eu"]
+when = "command -v dr && command -v jq"
 
 [custom.git_scope]
 # https://github.com/starship/starship/discussions/1252#discussioncomment-2461567
