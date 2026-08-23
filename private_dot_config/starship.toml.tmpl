@@ -97,13 +97,13 @@ shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-eu"]
 when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
 
 [custom.drcli]
-# Show the DataRobot CLI version when `dr` and `jq` are on PATH.
+# Show the DataRobot CLI version when `dr` is on PATH.
 # Reuses the same 👾 / alien_monster / U+1F47E icon as custom.drconfig.
-command = 'dr self version --output-format=json 2>/dev/null | jq -r ".version // .cliVersion // .clientVersion // empty" 2>/dev/null'
+command = "dr self version --short 2>/dev/null"
 format = "👾 $output "
 description = "DataRobot CLI version"
 shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-eu"]
-when = "command -v dr && command -v jq"
+when = "command -v dr"
 
 [custom.git_scope]
 # https://github.com/starship/starship/discussions/1252#discussioncomment-2461567
