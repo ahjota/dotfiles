@@ -92,7 +92,7 @@ style = "bold yellow"
 command = "yq '.endpoint' ~/.config/datarobot/drconfig.yaml | awk -F'/api/v2' '{print $1}' | awk -F'//' '{print $2}' | sed 's/datarobot.com/dr/g'"
 format = "👾 $output"
 description = "The contents of drconfig.yaml"
-shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-eu"]
+shell = ["sh", "-eu"]
 when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
 
 {{ $drcli := "" -}}
@@ -121,7 +121,7 @@ printf "%s (%s)" \
 description = 'The currently configured Git user.{email,name}'
 format = 'as [$output]($style) '
 style = 'blue bold'
-shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-e"]
+shell = ["sh", "-e"]
 when = 'git rev-parse --is-inside-work-tree'
 
 [cmd_duration]
