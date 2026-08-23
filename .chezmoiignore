@@ -40,6 +40,12 @@ Library/Preferences/com.googlecode.iterm2.plist
 
 # ignore non-Windows files.
 {{ if ne .chezmoi.os "windows" -}}
+.config/starship/scripts/drcli.ps1
+{{- end }}
+
+# Ignore the POSIX drcli script on Windows.
+{{ if eq .chezmoi.os "windows" -}}
+.config/starship/scripts/drcli.sh
 {{- end }}
 
 # Ignore work files.

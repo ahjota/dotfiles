@@ -96,14 +96,21 @@ description = "The contents of drconfig.yaml"
 shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-eu"]
 when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
 
+{{ $drcli := "" -}}
+{{ if eq .chezmoi.os "windows" -}}
+{{   $drcli = printf "& \"%s/.config/starship/scripts/drcli.ps1\"" .chezmoi.homeDir -}}
+{{ else -}}
+{{   $drcli = printf "\"%s/.config/starship/scripts/drcli.sh\"" .chezmoi.homeDir -}}
+{{ end -}}
 [custom.drcli]
 # Show the DataRobot CLI version when `dr` is on PATH.
 # Reuses the same 👾 / alien_monster / U+1F47E icon as custom.drconfig.
-command = "dr self version --short 2>/dev/null"
+# The OS-specific script defends against a non-DataRobot `dr` binary.
+command = {{ $drcli | squote }}
 format = "👾 $output "
 description = "DataRobot CLI version"
-shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-eu"]
-when = "command -v dr"
+shell = {{ if eq .chezmoi.os "windows" }}["powershell", "-ExecutionPolicy", "Bypass", "-Command"]{{ else }}["sh", "-c"]{{ end }}
+when = {{ $drcli | squote }}
 
 [custom.git_scope]
 # https://github.com/starship/starship/discussions/1252#discussioncomment-2461567
