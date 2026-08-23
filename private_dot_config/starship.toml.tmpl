@@ -10,8 +10,7 @@ $time\
 $character"""
 
 right_format = """
-$custom.drcli\
-$custom.drconfig\
+${custom.drcli}${custom.drconfig}\
 $time\
 $shlvl"""
 
@@ -109,7 +108,7 @@ when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
 command = {{ $drcli | squote }}
 format = "👾 $output "
 description = "DataRobot CLI version"
-shell = {{ if eq .chezmoi.os "windows" }}["powershell", "-ExecutionPolicy", "Bypass", "-Command"]{{ else }}["sh", "-c"]{{ end }}
+shell = {{ if eq .chezmoi.os "windows" }}["powershell", "-ExecutionPolicy", "Bypass", "-Command"]{{ else }}["dash", "-e"]{{ end }}
 when = {{ $drcli | squote }}
 
 [custom.git_scope]
