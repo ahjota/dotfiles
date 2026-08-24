@@ -27,15 +27,6 @@ on:
     # spikes). Distinct from Builder Minion (Thu–Mon 09:17), Meter Reader
     # Minion (Tue 09:53), and Security Review Minion (Wed 10:37).
     - cron: "11 10 * * 0"
-  # TEMPORARY: pull_request trigger exists only to validate this workflow
-  # from the feature branch before merge (GitHub registers workflow_dispatch
-  # workflows on the default branch only). Remove this trigger before opening
-  # the final PR — the production triggers are schedule + workflow_dispatch.
-  pull_request:
-    paths:
-      - .github/workflows/droid-consistency-sweep.yml
-      - scripts/consistency-sweep.sh
-      - .github/prompts/consistency-sweep.md
 
 permissions:
   contents: read
