@@ -6,3 +6,6 @@
 .aj
 
 **/.claude/settings.local.json
+
+# ignore codegraph
+.codegraph
