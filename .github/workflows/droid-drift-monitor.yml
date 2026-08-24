@@ -1,0 +1,398 @@
+# .github/workflows/droid-drift-monitor.yml
+# =============================================================================
+# Scheduled + manual GitHub Action that runs `droid exec` headlessly to scan
+# the repo for outdated version/model pins and opens a PR bumping them. This
+# is the "Meter Reader Minion" — it reads the meters (pinned versions) and
+# reports drift.
+#
+# Drift targets that no ecosystem tool (Dependabot/Renovate) can handle:
+#   - Factory model pins in private_dot_factory/private_droids/*.md
+#   - Factory --model args in .github/workflows/*.yml
+#   - antidote plugin repos in dot_zsh_plugins.txt
+#   - any other pinned versions the agent discovers
+# GitHub Actions version pins are handled separately by dependabot.yml.
+#
+# Auth/quota/credit failures are quiet (green run + warning annotation) so a
+# depleted Factory account does not spam your inbox every week.
+# =============================================================================
+name: Meter Reader Minion
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Runs weekly on Tuesdays at 09:53 UTC (off-the-hour to avoid GitHub
+    # cron spikes). Distinct from Security Review Minion (Wed 10:37) and
+    # Builder Minion (Thu–Mon 09:17) to spread load across the week.
+    - cron: "53 9 * * 2"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: droid-drift-monitor
+  cancel-in-progress: false
+
+jobs:
+  # ------------------------------------------------------------------
+  # Randomly choose a runner for this workflow run. Drift affects all
+  # platforms, so spreading runs across the three major runners validates
+  # pin changes on more than just Ubuntu. The choice is made once per run
+  # and passed to the actual drift job as an output.
+  # ------------------------------------------------------------------
+  choose-runner:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.pick.outputs.runner }}
+    steps:
+      - name: Pick random runner
+        id: pick
+        run: |
+          runners=("ubuntu-latest" "macos-latest" "windows-latest")
+          idx=$((RANDOM % ${#runners[@]}))
+          echo "runner=${runners[$idx]}" >> "$GITHUB_OUTPUT"
+          echo "Selected runner: ${runners[$idx]}"
+
+  drift-monitor:
+    needs: choose-runner
+    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    # A single droid exec scan is usually well under 10 min, but give it room.
+    timeout-minutes: 45
+    # Run all shell steps in bash so the same scripts work on Linux, macOS,
+    # and Windows (via Git Bash).
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # ------------------------------------------------------------------
+      # 1. Checkout
+      # ------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      # ------------------------------------------------------------------
+      # 2. Configure git user for commits made inside the runner
+      # ------------------------------------------------------------------
+      # The droid agent commits changes directly in the workflow. Without an
+      # explicit identity, git falls back to the runner image defaults, which
+      # produced confusing authors like `Anka <runner@... .local>` on macOS.
+      # Set a stable identity before any commits happen.
+      # ------------------------------------------------------------------
+      - name: Configure git user
+        run: |
+          git config --global user.name "Droid"
+          git config --global user.email "droid@factory.ai"
+          echo "Git user: $(git config --global user.name) <$(git config --global user.email)>"
+
+      # ------------------------------------------------------------------
+      # 3. Set up a cross-platform temp directory inside the workspace
+      # ------------------------------------------------------------------
+      - name: Set workflow temp directory
+        id: temp
+        run: |
+          # Keep temp files under the repo workspace so the same relative
+          # paths work on Linux, macOS, and Windows (Git Bash). Run this
+          # after checkout so actions/checkout does not wipe the directory.
+          WORKFLOW_TEMP="$GITHUB_WORKSPACE/.droid-temp"
+          mkdir -p "$WORKFLOW_TEMP"
+          echo "WORKFLOW_TEMP=$WORKFLOW_TEMP" >> "$GITHUB_ENV"
+          echo "Workflow temp: $WORKFLOW_TEMP"
+
+      # ------------------------------------------------------------------
+      # 4. Install Droid CLI
+      # ------------------------------------------------------------------
+      - name: Install Droid CLI
+        run: |
+          curl -fsSL https://app.factory.ai/cli | sh
+          # The installer places the binary in ~/.local/bin (or similar);
+          # add it to PATH for this and subsequent steps.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # Verify it runs.
+          "$HOME/.local/bin/droid" --version
+
+      # ------------------------------------------------------------------
+      # 5. Build the prompt file
+      # ------------------------------------------------------------------
+      # Start with the reusable prompt template, then append the current
+      # run date so the agent can use it in the branch name.
+      # ------------------------------------------------------------------
+      - name: Build prompt
+        run: |
+          cp .github/prompts/drift-monitor.md $WORKFLOW_TEMP/prompt.md
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Run context"
+            echo ""
+            echo "**Date (UTC):** $(date -u +%Y-%m-%d)"
+            echo "**Runner:** ${{ needs.choose-runner.outputs.runner }}"
+          } >> $WORKFLOW_TEMP/prompt.md
+
+          echo "Prompt file built ($(wc -l < $WORKFLOW_TEMP/prompt.md) lines)."
+
+      # ------------------------------------------------------------------
+      # 6. Run droid exec (capture exit code, do not fail the step)
+      # ------------------------------------------------------------------
+      - name: Run droid exec
+        id: droid
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set +e
+          droid exec \
+            --auto medium \
+            --model kimi-k2.7-code \
+            --output-format json \
+            -f $WORKFLOW_TEMP/prompt.md \
+            2>&1 | tee $WORKFLOW_TEMP/droid-out.json
+          droid_exit=$?
+          echo "droid_exit=$droid_exit" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # ------------------------------------------------------------------
+      # 7. Classify the droid exec result
+      # ------------------------------------------------------------------
+      - name: Classify droid result
+        id: classify
+        run: |
+          set -euo pipefail
+          droid_exit="${{ steps.droid.outputs.droid_exit }}"
+
+          # Extract the result text and is_error flag from JSON output.
+          result_text=""
+          is_error="false"
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            result_text=$(jq -r '.result // ""' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "")
+            is_error=$(jq -r '.is_error // false' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "false")
+          fi
+
+          # Auth/quota/billing quiet skip: only when droid exec actually
+          # failed (non-zero exit or is_error=true). A successful run may
+          # mention "FACTORY_API_KEY" or "credit" in its output without
+          # being an auth failure.
+          if [ "$droid_exit" -ne 0 ] || [ "$is_error" = "true" ]; then
+            quiet_signatures='Authentication failed|invalid.*key|insufficient|quota|limit exceeded|402|403|429|billing|plan limit|rate limit'
+            if echo "$result_text" | grep -iqE "$quiet_signatures"; then
+              echo "::warning::Droid exec hit an auth/quota/billing limit — skipping quietly."
+              echo "Raw droid result (for diagnostics):"
+              echo "$result_text"
+              {
+                echo "## Meter Reader Minion — quiet skip"
+                echo ""
+                echo "Droid exec returned a quota/auth/billing error and was skipped quietly."
+                echo ""
+                echo "**Result:** $result_text"
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "quiet_skip=true" >> "$GITHUB_OUTPUT"
+              echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo "quiet_skip=false" >> "$GITHUB_OUTPUT"
+
+          if [ "$droid_exit" -ne 0 ]; then
+            echo "hard_fail=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Droid exec failed (exit $droid_exit) with an unexpected error."
+            {
+              echo "## Meter Reader Minion — failed"
+              echo ""
+              echo "Droid exec exited with code **$droid_exit**."
+              echo ""
+              # Show just the result text, not the full JSON blob.
+              if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+                jq -r '.result // "(no result text)"' $WORKFLOW_TEMP/droid-out.json 2>/dev/null \
+                  || cat $WORKFLOW_TEMP/droid-out.json
+              else
+                echo "(no output captured)"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0  # Step succeeds so the finish step can salvage; job fails below.
+          fi
+
+          echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # 8. Extract session metadata for the job summary + PR body
+      # ------------------------------------------------------------------
+      - name: Extract session metadata
+        id: metadata
+        run: |
+          set -euo pipefail
+
+          session_id="unknown"
+          duration_ms=0
+          num_turns=0
+
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            session_id=$(jq -r '.session_id // "unknown"' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "unknown")
+            duration_ms=$(jq -r '.duration_ms // 0' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo 0)
+            num_turns=$(jq -r '.num_turns // 0' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo 0)
+          fi
+
+          echo "session_id=$session_id" >> "$GITHUB_OUTPUT"
+          echo "duration_ms=$duration_ms" >> "$GITHUB_OUTPUT"
+          echo "num_turns=$num_turns" >> "$GITHUB_OUTPUT"
+
+          # Dump all JSON fields (minus the verbose result text) to the job
+          # summary so model, usage, and other metadata are visible at a
+          # glance. Whatever the CLI includes will show up here.
+          {
+            echo ""
+            echo "### Droid session details"
+            echo ""
+            if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+              jq -r 'del(.result) | to_entries[] | "- **\(.key):** \(.value | tostring)"' \
+                $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "- (failed to parse session metadata)"
+            else
+              echo "- (no output captured)"
+            fi
+            echo ""
+            echo "_Full JSON output is available in the run artifacts._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 9. Upload droid session artifacts
+      # ------------------------------------------------------------------
+      - name: Upload droid session artifacts
+        if: steps.classify.outputs.quiet_skip != 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: droid-drift-monitor-${{ github.run_id }}
+          path: |
+            .droid-temp/droid-out.json
+            .droid-temp/prompt.md
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ------------------------------------------------------------------
+      # 10. Finish: push branch + open PR (or salvage on error)
+      # ------------------------------------------------------------------
+      - name: Push branch and open PR
+        if: steps.classify.outputs.quiet_skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          hard_fail="${{ steps.classify.outputs.hard_fail }}"
+          quiet_skip="${{ steps.classify.outputs.quiet_skip }}"
+
+          if [ "$quiet_skip" = "true" ]; then
+            echo "Quiet skip — not pushing or opening a PR."
+            exit 0
+          fi
+
+          # Look for a droid/drift* branch the agent created.
+          droid_branch=$(git branch --list 'droid/drift*' | head -1 | sed 's/^[* ]*//')
+
+          if [ -z "$droid_branch" ]; then
+            # Fallback: if the agent made uncommitted changes on the default
+            # branch, commit them onto a new droid/drift branch.
+            if git diff --quiet && git diff --cached --quiet; then
+              echo "Agent found no drift — no branch and no changes."
+              {
+                echo "## Meter Reader Minion — no drift"
+                echo ""
+                echo "Droid exec completed successfully and found no outdated pins."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+
+            run_date=$(date -u +%Y-%m-%d)
+            droid_branch="droid/drift-${run_date}-salvage"
+            git checkout -b "$droid_branch"
+            git add -A
+            git commit -m "chore(deps): version drift bumps (${run_date})" || true
+          fi
+
+          # Push the branch.
+          git push origin "$droid_branch"
+
+          # Build the PR body from the droid-drift PR template, substituting
+          # HTML-comment placeholders with live values. Using a template
+          # file keeps the PR structure versioned and editable without
+          # touching the workflow YAML.
+          pr_body="$WORKFLOW_TEMP/pr-body.md"
+          cp .github/PULL_REQUEST_TEMPLATE/droid-drift.md "$pr_body"
+
+          # Extract just the human-readable result text from the JSON,
+          # not the full blob (which includes usage stats, session IDs,
+          # and thousands of chars of noise). Write to a temp file so sed
+          # can insert it via the `r` command (safe for multi-line text
+          # with special characters — no string interpolation needed).
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            jq -r '.result // "(no result text)"' $WORKFLOW_TEMP/droid-out.json 2>/dev/null \
+              > $WORKFLOW_TEMP/droid-summary.txt || echo '(failed to parse droid output)' > $WORKFLOW_TEMP/droid-summary.txt
+          else
+            echo '(no output captured)' > $WORKFLOW_TEMP/droid-summary.txt
+          fi
+
+          # Substitute the droid summary (multi-line → sed `r` + `d`).
+          # Use -i.bak and remove the backup so the same syntax works on
+          # both GNU sed (Linux/Windows Git Bash) and BSD sed (macOS).
+          sed -i.bak -e "/<!-- DROID_SUMMARY -->/r $WORKFLOW_TEMP/droid-summary.txt" \
+            -e "/<!-- DROID_SUMMARY -->/d" "$pr_body"
+          rm -f "$pr_body.bak"
+
+          # Substitute the drift date (simple scalar).
+          run_date=$(date -u +%Y-%m-%d)
+          sed -i.bak "s|<!-- DRIFT_DATE -->|${run_date}|" "$pr_body"
+          rm -f "$pr_body.bak"
+
+          # Insert the hard-fail warning or remove the placeholder.
+          if [ "$hard_fail" = "true" ]; then
+            printf '> ⚠️ Droid exec errored during this run. This **draft** PR contains whatever work was salvaged — review carefully.\n' \
+              > $WORKFLOW_TEMP/droid-warning.txt
+            sed -i.bak -e "/<!-- DROID_WARNING -->/r $WORKFLOW_TEMP/droid-warning.txt" \
+              -e "/<!-- DROID_WARNING -->/d" "$pr_body"
+            rm -f "$pr_body.bak"
+          else
+            sed -i.bak '/<!-- DROID_WARNING -->/d' "$pr_body"
+            rm -f "$pr_body.bak"
+          fi
+
+          # Ensure the `drift` label exists.
+          gh label create drift --description "PR from the droid-drift-monitor workflow" \
+            --color 0E8A16 --force 2>/dev/null || true
+
+          # Use the droid's commit subject as the PR title. The prompt
+          # instructs the agent to write a Conventional Commit subject
+          # (imperative mood, ≤50 chars), which makes a far better title
+          # than the generic fallback. For the salvage path (where the
+          # workflow itself committed with a generic message) or any edge
+          # case, fall back to the generic title.
+          pr_title=$(git log --format='%s' -1 "$droid_branch" 2>/dev/null || true)
+          if [ -z "$pr_title" ] || [ "$pr_title" = "chore(deps): version drift bumps (${run_date})" ]; then
+            pr_title="chore(deps): version drift bumps (${run_date})"
+          fi
+
+          # Open the PR (draft if the run errored).
+          pr_flags=(--title "$pr_title" --body-file "$pr_body" --label drift)
+          if [ "$hard_fail" = "true" ]; then
+            pr_flags+=(--draft)
+          fi
+
+          gh pr create --head "$droid_branch" --base main "${pr_flags[@]}"
+
+          {
+            echo "## Meter Reader Minion — PR opened"
+            echo ""
+            echo "Branch: \`$droid_branch\`"
+            if [ "$hard_fail" = "true" ]; then
+              echo "Status: **draft** (run errored, salvaged)"
+            else
+              echo "Status: ready for review"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 11. Fail the job if droid exec had an unexpected hard failure
+      # ------------------------------------------------------------------
+      - name: Fail on hard error
+        if: steps.classify.outputs.hard_fail == 'true'
+        run: |
+          echo "Droid exec had an unexpected hard failure — failing the job."
+          exit 1
