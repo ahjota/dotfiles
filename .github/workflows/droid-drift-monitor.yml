@@ -34,32 +34,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ------------------------------------------------------------------
-  # Randomly choose a runner for this workflow run. Drift affects all
-  # platforms, so spreading runs across the three major runners validates
-  # pin changes on more than just Ubuntu. The choice is made once per run
-  # and passed to the actual drift job as an output.
-  # ------------------------------------------------------------------
-  choose-runner:
-    runs-on: ubuntu-latest
-    outputs:
-      runner: ${{ steps.pick.outputs.runner }}
-    steps:
-      - name: Pick random runner
-        id: pick
-        run: |
-          runners=("ubuntu-latest" "macos-latest" "windows-latest")
-          idx=$((RANDOM % ${#runners[@]}))
-          echo "runner=${runners[$idx]}" >> "$GITHUB_OUTPUT"
-          echo "Selected runner: ${runners[$idx]}"
-
   drift-monitor:
-    needs: choose-runner
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    # Pinned to ubuntu-latest. The Droid CLI installer
+    # (curl -fsSL https://app.factory.ai/cli | sh) only ships a Unix shell
+    # installer and explicitly rejects Windows Git Bash
+    # ("Unsupported operating system: MINGW64_NT-..."). macOS adds cost
+    # without covering a drift surface that Linux does not, so a single
+    # Linux runner is both the cheapest and the only supported choice.
+    runs-on: ubuntu-latest
     # A single droid exec scan is usually well under 10 min, but give it room.
     timeout-minutes: 45
-    # Run all shell steps in bash so the same scripts work on Linux, macOS,
-    # and Windows (via Git Bash).
     defaults:
       run:
         shell: bash
@@ -126,7 +110,7 @@ jobs:
             echo "## Run context"
             echo ""
             echo "**Date (UTC):** $(date -u +%Y-%m-%d)"
-            echo "**Runner:** ${{ needs.choose-runner.outputs.runner }}"
+            echo "**Runner:** ${{ runner.os }}"
           } >> $WORKFLOW_TEMP/prompt.md
 
           echo "Prompt file built ($(wc -l < $WORKFLOW_TEMP/prompt.md) lines)."
