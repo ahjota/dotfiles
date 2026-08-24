@@ -102,7 +102,7 @@
 	# trim = delete all local branches except the current one and any checked out in another worktree
 	# (branches checked out in other worktrees are prefixed with '+' by `git branch`).
 	trim = "!f() { git branch | grep -v '^[*+]' | xargs git branch -D; }; f"
-	trimdryrun = "!f() { git branch | grep -v '^\\*' | xargs cat; }; f"
+	trimdryrun = "!f() { git branch | grep -v '^[*+]' | xargs cat; }; f"
 	# squash = similar to 'git merge --squash', but without committing
 	# soft-reset to the merge-base with the default branch, staging all commits since diverging (squash prep, no commit made)
 	squash = "!f() { git reset $(git merge-base ${1-$(git default-branch)} $(git rev-parse --abbrev-ref HEAD)); }; f"
