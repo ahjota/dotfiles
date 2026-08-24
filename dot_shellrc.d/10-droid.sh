@@ -108,5 +108,4 @@ _droid_smart() {
 }
 
 droid()      { _droid_smart "$@"; }
-dr()         { _droid_smart "$@"; }
 droid-here() { command droid "$@"; }
