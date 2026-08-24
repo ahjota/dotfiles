@@ -51,9 +51,12 @@ concurrency:
 jobs:
   harvest:
     runs-on: ubuntu-latest
-    # The scan is fast; droid exec (when TODOs exist) is well under 10 min,
-    # but give it room.
-    timeout-minutes: 30
+    # The scan is fast; droid exec is the long pole — it drafts a JIRA-ready
+    # body (with a context read) per new TODO. The harvest cap
+    # (CAP_TODOS in scripts/harvest-todos.sh, currently 10) bounds the per-run
+    # batch so a single agent pass finishes well within this window. 45 min
+    # matches the Builder Minion and leaves margin.
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash

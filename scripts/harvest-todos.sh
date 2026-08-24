@@ -26,17 +26,22 @@
 #     "todos": [ { "file": "<path>", "line": <int>, "kind": "TODO|FIXME|XXX", "text": "<comment text>" } ]
 #   }
 #
-# A maximum of 25 TODOs is emitted per run (CAP_TODOS below) to bound the
-# number of issues the workflow opens in a single pass. When the cap is hit,
-# summary.truncated is true and the remaining matches are dropped after a
-# stable file/line sort so reruns harvest the same set first.
+# A maximum of 10 TODOs is emitted per run (CAP_TODOS below) to bound the
+# work the downstream `droid exec` step does in a single pass — each TODO
+# requires a context read + a <200-word JIRA draft, and one agent run over
+# 20+ entries exceeded the 45-minute job timeout. With a cap of 10, a weekly
+# run files a bounded batch; remaining TODOs are harvested by later runs,
+# and the workflow's dedup step prevents re-filing entries that already have
+# an open issue. When the cap is hit, summary.truncated is true and the
+# remaining matches are dropped after a stable file/line sort so reruns
+# harvest the same set first.
 # =============================================================================
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-CAP_TODOS=25
+CAP_TODOS=10
 
 # Directories whose tracked contents are generated/vendored and should not be
 # harvested. Matching is anchored at the repo root (pathspec ':(top)').
