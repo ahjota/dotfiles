@@ -74,8 +74,5 @@ For each TODO entry in the JSON:
 
 ---
 
-## Harvested TODOs (JSON)
+<!-- The workflow appends the harvested TODO list as JSON after this line. -->
 
-```json
-[]
-```

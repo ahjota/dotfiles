@@ -226,7 +226,7 @@ jobs:
             echo "## Harvested TODOs (JSON)"
             echo ""
             echo '```json'
-            jq '.todos' "$WORKFLOW_TEMP/todo-new.json"
+            jq '.' "$WORKFLOW_TEMP/todo-new.json"
             echo '```'
           } >> "$WORKFLOW_TEMP/prompt.md"
           echo "Prompt file built ($(wc -l < "$WORKFLOW_TEMP/prompt.md") lines)."
