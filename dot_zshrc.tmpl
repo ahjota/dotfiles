@@ -146,11 +146,6 @@ if [[ $(command -v factory) ]] then
 fi
 {{- end }}
 
-# Added by Cargo
-if [[ -d "$HOME/.cargo/bin" ]] then
-  export PATH="$HOME/.cargo/bin:$PATH"
-fi
-
 # LM Studio CLI (lms): only add to PATH if installed
 if [[ -d "$HOME/.lmstudio/bin" ]] then
   export PATH="$PATH:$HOME/.lmstudio/bin"
