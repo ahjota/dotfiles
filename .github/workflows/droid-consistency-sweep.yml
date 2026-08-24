@@ -1,0 +1,473 @@
+# .github/workflows/droid-consistency-sweep.yml
+# =============================================================================
+# Scheduled + manual GitHub Action that runs a headless dotfile consistency
+# sweep ("Sweeper Minion"). It runs shellcheck, `chezmoi execute-template`,
+# `bash -n`, and `zsh -n` across the whole chezmoi source tree via
+# scripts/consistency-sweep.sh, then opens GitHub issues for anything broken.
+#
+# Issue authoring is delegated to `droid exec` (it drafts titles + bodies);
+# all outward writes (gh issue create / comment) happen in scripted steps —
+# the agent never runs gh or pushes, matching the Builder / Meter Reader
+# minion convention.
+#
+# Auth/quota/credit failures from droid exec are quiet (green run + warning
+# annotation) so a depleted Factory account does not spam your inbox every
+# week. On a quiet skip, no issues are created.
+#
+# Runner: ubuntu-latest only. zsh is preinstalled on ubuntu-latest, so the
+# `zsh -n` checks run (they are skipped with a warning on runners without
+# zsh — see scripts/consistency-sweep.sh).
+# =============================================================================
+name: Sweeper Minion
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Runs weekly on Sundays at 10:11 UTC (off-the-hour to avoid GitHub cron
+    # spikes). Distinct from Builder Minion (Thu–Mon 09:17), Meter Reader
+    # Minion (Tue 09:53), and Security Review Minion (Wed 10:37).
+    - cron: "11 10 * * 0"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: droid-consistency-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    # The validation suite is fast; droid exec (when failures exist) is well
+    # under 10 min, but give it room.
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # ------------------------------------------------------------------
+      # 1. Checkout
+      # ------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      # ------------------------------------------------------------------
+      # 2. Set up a cross-platform temp directory inside the workspace
+      # ------------------------------------------------------------------
+      - name: Set workflow temp directory
+        id: temp
+        run: |
+          # Keep temp files under the repo workspace so relative paths are
+          # stable. Run after checkout so actions/checkout does not wipe it.
+          WORKFLOW_TEMP="$GITHUB_WORKSPACE/.droid-temp"
+          mkdir -p "$WORKFLOW_TEMP"
+          echo "WORKFLOW_TEMP=$WORKFLOW_TEMP" >> "$GITHUB_ENV"
+          echo "Workflow temp: $WORKFLOW_TEMP"
+
+      # ------------------------------------------------------------------
+      # 3. Install chezmoi (for template rendering)
+      # ------------------------------------------------------------------
+      # Verbatim from droid-issue-fixer.yml (Builder Minion).
+      # ------------------------------------------------------------------
+      - name: Install chezmoi
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          "$HOME/.local/bin/chezmoi" --version
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # ------------------------------------------------------------------
+      # 4. Write CI chezmoi config
+      # ------------------------------------------------------------------
+      # Copied from droid-issue-fixer.yml with two added keys: `hasDrDev` and
+      # `devJava`. These back the promptBoolOnce calls in .chezmoi.toml.tmpl
+      # so that template renders headlessly. (scripts/consistency-sweep.sh
+      # still skips .chezmoi.toml.tmpl because `chezmoi execute-template` run
+      # standalone does not define the promptOnce functions at all — see the
+      # script header — but the keys are harmless and keep the config usable
+      # for `chezmoi init --generate` if ever needed.)
+      # ------------------------------------------------------------------
+      - name: Write CI chezmoi config
+        run: |
+          mkdir -p "$HOME/.config/chezmoi"
+          printf '%s\n' \
+            '[data]' \
+            'email = "droid-ci@example.com"' \
+            'work = false' \
+            'hasDrDev = false' \
+            'iterm2 = false' \
+            'artifactoryHost = ""' \
+            'bashMajor = 5' \
+            '[data.dev]' \
+            'java = false' \
+            'devJava = false' \
+            '[data.fonts]' \
+            'sans-serif = "\"Helvetica\",sans-serif"' \
+            'serif = "\"Georgia\",serif"' \
+            'mono = "\"Fira Code Mono\""' \
+            > "$HOME/.config/chezmoi/chezmoi.toml"
+          echo "CHEZMOI_CI_CONFIG=$HOME/.config/chezmoi/chezmoi.toml" >> "$GITHUB_ENV"
+
+      # ------------------------------------------------------------------
+      # 5. Install shellcheck
+      # ------------------------------------------------------------------
+      # Verbatim cross-platform step from droid-issue-fixer.yml. On the
+      # ubuntu-latest runner only the Linux branch fires, but the full case
+      # is kept so the step stays portable if the runner ever changes.
+      # ------------------------------------------------------------------
+      - name: Install shellcheck
+        run: |
+          if command -v shellcheck >/dev/null 2>&1; then
+            echo "shellcheck already available"
+            shellcheck --version
+            exit 0
+          fi
+
+          case "$RUNNER_OS" in
+            macOS)
+              export HOMEBREW_NO_REQUIRE_TAP_TRUST=1
+              brew install shellcheck
+              ;;
+            Windows)
+              choco install shellcheck
+              ;;
+            Linux)
+              sudo apt-get update && sudo apt-get install -y shellcheck
+              ;;
+          esac
+          shellcheck --version
+
+      # ------------------------------------------------------------------
+      # 6. Run the consistency sweep
+      # ------------------------------------------------------------------
+      # The script always exits 0; failures are encoded in the JSON report.
+      # ------------------------------------------------------------------
+      - name: Run consistency sweep
+        id: sweep
+        run: |
+          scripts/consistency-sweep.sh "$WORKFLOW_TEMP/sweep-results.json"
+          failures=$(jq '.summary.failures' "$WORKFLOW_TEMP/sweep-results.json")
+          files_checked=$(jq '.summary.files_checked' "$WORKFLOW_TEMP/sweep-results.json")
+          echo "Files checked: $files_checked"
+          echo "Failures: $failures"
+          echo "failures=$failures" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Sweeper Minion — validation results"
+            echo ""
+            echo "- Files checked: **$files_checked**"
+            echo "- Failures: **$failures**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 7. Short-circuit when the tree is clean
+      # ------------------------------------------------------------------
+      - name: Check for failures
+        id: haswork
+        run: |
+          if [ "${{ steps.sweep.outputs.failures }}" -gt 0 ]; then
+            echo "has_failures=true" >> "$GITHUB_OUTPUT"
+            echo "Failures detected — proceeding to issue authoring."
+          else
+            echo "has_failures=false" >> "$GITHUB_OUTPUT"
+            echo "No failures — tree is clean. Done."
+            {
+              echo ""
+              echo "✅ No consistency failures. No issues to create."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # ------------------------------------------------------------------
+      # 8. Install Droid CLI (only when there are failures to report)
+      # ------------------------------------------------------------------
+      # Verbatim from droid-issue-fixer.yml.
+      # ------------------------------------------------------------------
+      - name: Install Droid CLI
+        if: steps.haswork.outputs.has_failures == 'true'
+        run: |
+          curl -fsSL https://app.factory.ai/cli | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/droid" --version
+
+      # ------------------------------------------------------------------
+      # 9. Build the prompt file
+      # ------------------------------------------------------------------
+      - name: Build prompt
+        if: steps.haswork.outputs.has_failures == 'true'
+        run: |
+          cat .github/prompts/consistency-sweep.md > $WORKFLOW_TEMP/prompt.md
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Sweep results (JSON)"
+            echo ""
+            echo '```json'
+            jq '.' "$WORKFLOW_TEMP/sweep-results.json"
+            echo '```'
+          } >> $WORKFLOW_TEMP/prompt.md
+          echo "Prompt file built ($(wc -l < $WORKFLOW_TEMP/prompt.md) lines)."
+
+      # ------------------------------------------------------------------
+      # 10. Run droid exec (capture exit code, do not fail the step)
+      # ------------------------------------------------------------------
+      - name: Run droid exec
+        id: droid
+        if: steps.haswork.outputs.has_failures == 'true'
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set +e
+          droid exec \
+            --auto medium \
+            --model kimi-k2.7-code \
+            --output-format json \
+            -f $WORKFLOW_TEMP/prompt.md \
+            2>&1 | tee $WORKFLOW_TEMP/droid-out.json
+          droid_exit=$?
+          echo "droid_exit=$droid_exit" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # ------------------------------------------------------------------
+      # 11. Classify the droid exec result (quiet-skip on auth/quota/billing)
+      # ------------------------------------------------------------------
+      - name: Classify droid result
+        id: classify
+        if: steps.haswork.outputs.has_failures == 'true'
+        run: |
+          set -euo pipefail
+          droid_exit="${{ steps.droid.outputs.droid_exit }}"
+
+          result_text=""
+          is_error="false"
+          if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+            result_text=$(jq -r '.result // ""' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "")
+            is_error=$(jq -r '.is_error // false' $WORKFLOW_TEMP/droid-out.json 2>/dev/null || echo "false")
+          fi
+
+          # Auth/quota/billing quiet skip: only when droid exec actually
+          # failed (non-zero exit or is_error=true).
+          if [ "$droid_exit" -ne 0 ] || [ "$is_error" = "true" ]; then
+            quiet_signatures='Authentication failed|invalid.*key|insufficient|quota|limit exceeded|402|403|429|billing|plan limit|rate limit'
+            if echo "$result_text" | grep -iqE "$quiet_signatures"; then
+              echo "::warning::Droid exec hit an auth/quota/billing limit — skipping quietly."
+              echo "Raw droid result (for diagnostics):"
+              echo "$result_text"
+              {
+                echo "## Sweeper Minion — quiet skip"
+                echo ""
+                echo "Droid exec returned a quota/auth/billing error and was skipped quietly."
+                echo "No issues were created this run."
+                echo ""
+                echo "**Result:** $result_text"
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "quiet_skip=true" >> "$GITHUB_OUTPUT"
+              echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo "quiet_skip=false" >> "$GITHUB_OUTPUT"
+
+          if [ "$droid_exit" -ne 0 ]; then
+            echo "hard_fail=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Droid exec failed (exit $droid_exit) with an unexpected error."
+            {
+              echo "## Sweeper Minion — droid exec failed"
+              echo ""
+              echo "Droid exec exited with code **$droid_exit**. Falling back to scripted issue bodies."
+              echo ""
+              if [ -f $WORKFLOW_TEMP/droid-out.json ]; then
+                jq -r '.result // "(no result text)"' $WORKFLOW_TEMP/droid-out.json 2>/dev/null \
+                  || cat $WORKFLOW_TEMP/droid-out.json
+              else
+                echo "(no output captured)"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0  # Step succeeds so issue creation can salvage; job fails below.
+          fi
+
+          echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # 12. Create or update GitHub issues
+      # ------------------------------------------------------------------
+      # The agent authors issue bodies to .droid-temp/issues/. This step:
+      #   - builds a manifest (prefers the agent's; falls back to a
+      #     deterministic one generated from sweep-results.json when the agent
+      #     output is missing/unparseable or the run hard-failed);
+      #   - computes STABLE titles for dedup (per-file: "[sweeper] <file>",
+      #     summary: "[sweeper] weekly consistency sweep") so weekly reruns
+      #     comment on existing open issues instead of creating duplicates;
+      #   - creates new issues or posts dated comments on existing ones.
+      # ------------------------------------------------------------------
+      - name: Create or update issues
+        if: steps.haswork.outputs.has_failures == 'true' && steps.classify.outputs.quiet_skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          results="$WORKFLOW_TEMP/sweep-results.json"
+          issues_dir="$WORKFLOW_TEMP/issues"
+          mkdir -p "$issues_dir"
+
+          quiet_skip="${{ steps.classify.outputs.quiet_skip }}"
+          hard_fail="${{ steps.classify.outputs.hard_fail }}"
+
+          # --- Ensure the sweeper label exists ----------------------------
+          gh label create sweeper \
+            --description "Opened by the Sweeper Minion consistency sweep" \
+            --color BFD4F2 --force 2>/dev/null || true
+
+          # --- Decide grouping (<=3 per-file, >3 summary) ----------------
+          failure_files=$(jq -r '[.failures[].file] | unique | length' "$results")
+          per_file=0
+          if [ "$failure_files" -le 3 ]; then
+            per_file=1
+          fi
+
+          # --- Build a manifest ------------------------------------------
+          # Prefer the agent's manifest when it is valid JSON with the right
+          # shape and the run did not hard-fail. Otherwise generate a
+          # deterministic fallback manifest + bodies from sweep-results.json.
+          use_agent=0
+          agent_manifest="$issues_dir/manifest.json"
+          if [ "$hard_fail" != "true" ] && [ -f "$agent_manifest" ]; then
+            if jq -e 'type == "array" and all(.[]; has("slug") and has("file") and has("body_file"))' \
+               "$agent_manifest" >/dev/null 2>&1; then
+              use_agent=1
+            fi
+          fi
+
+          if [ "$use_agent" -eq 0 ]; then
+            echo "Using scripted fallback issue bodies."
+            # Generate one body file per entry, plus manifest.json.
+            manifest_entries="[]"
+            if [ "$per_file" -eq 1 ]; then
+              while IFS=$'\t' read -r file checks_json; do
+                slug=$(echo "$file" | tr -c 'a-zA-Z0-9' '-' | tr 'A-Z' 'a-z' | sed 's/^-*//;s/-*$//')
+                body="$issues_dir/${slug}.md"
+                {
+                  echo "### \`$file\`"
+                  echo ""
+                  echo "The weekly consistency sweep reported the following failure(s):"
+                  echo ""
+                  echo "$checks_json" | jq -r '.[] | "**\(.check):**\n\n\`\`\`\n\(.output)\n\`\`\`\n"'
+                } > "$body"
+                manifest_entries=$(echo "$manifest_entries" | jq \
+                  --arg slug "$slug" --arg file "$file" --arg body_file "${slug}.md" \
+                  '. + [{slug: $slug, file: $file, body_file: $body_file}]')
+              done < <(jq -r '.failures | group_by(.file)[] | [.[0].file, (map({check, output}) | tojson)] | @tsv' "$results")
+            else
+              slug="weekly-summary"
+              body="$issues_dir/${slug}.md"
+              {
+                echo "### Weekly consistency sweep — $failure_files failing file(s)"
+                echo ""
+                echo "The weekly sweep reported failures across the following files:"
+                echo ""
+                echo "$results" | jq -r '.failures | group_by(.file)[] | "- **\(.[0].file)** — \(map(.check) | unique | join(", "))"'
+                echo ""
+                echo "See the [full run artifacts] for complete check output."
+                echo ""
+                echo "## Next steps"
+                echo ""
+                echo "Triage each file above; re-run \`scripts/consistency-sweep.sh\` locally to reproduce."
+              } > "$body"
+              manifest_entries=$(echo "$manifest_entries" | jq \
+                --arg slug "$slug" --arg body_file "${slug}.md" \
+                '. + [{slug: $slug, file: "__summary__", body_file: $body_file}]')
+            fi
+            echo "$manifest_entries" > "$agent_manifest"
+          else
+            echo "Using droid-authored issue bodies from $agent_manifest."
+          fi
+
+          # --- Load existing open sweeper issues for dedup ----------------
+          # Map title -> issue number.
+          existing_json="$issues_dir/existing.json"
+          gh issue list --state open --label sweeper --json number,title \
+            > "$existing_json" 2>/dev/null || echo '[]' > "$existing_json"
+
+          created=0
+          commented=0
+          today=$(date -u +%F)
+
+          # --- Iterate manifest entries ----------------------------------
+          n=$(jq 'length' "$agent_manifest")
+          for i in $(seq 0 $((n - 1))); do
+            entry=$(jq -c ".[$i]" "$agent_manifest")
+            file=$(echo "$entry" | jq -r '.file')
+            body_file=$(echo "$entry" | jq -r '.body_file')
+            body_path="$issues_dir/$body_file"
+
+            # Stable title for dedup.
+            if [ "$file" = "__summary__" ]; then
+              title="[sweeper] weekly consistency sweep"
+            else
+              title="[sweeper] $file"
+            fi
+
+            if [ ! -f "$body_path" ]; then
+              echo "warn: body file $body_path missing for $file — skipping."
+              continue
+            fi
+
+            # Look for an existing open sweeper issue with the same title.
+            existing_num=$(jq -r --arg t "$title" \
+              '.[] | select(.title == $t) | .number' "$existing_json" | head -1)
+
+            if [ -n "$existing_num" ]; then
+              # Update: post a dated comment with the fresh body.
+              {
+                echo "### Update — $today"
+                echo ""
+                cat "$body_path"
+              } | gh issue comment "$existing_num" --body-file -
+              commented=$((commented + 1))
+              echo "Updated existing issue #$existing_num ($title)"
+            else
+              issue_url=$(gh issue create \
+                --title "$title" \
+                --body-file "$body_path" \
+                --label sweeper)
+              created=$((created + 1))
+              echo "Created issue: $title — $issue_url"
+            fi
+          done
+
+          {
+            echo ""
+            echo "### Issues"
+            echo ""
+            echo "- New issues created: **$created**"
+            echo "- Existing issues updated: **$commented**"
+            echo "- Grouping: $([ "$per_file" -eq 1 ] && echo 'one per file' || echo 'single summary')"
+            echo "- Issue source: $([ "$use_agent" -eq 1 ] && echo 'droid-authored' || echo 'scripted fallback')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 13. Upload artifacts (sweep results + droid session)
+      # ------------------------------------------------------------------
+      - name: Upload artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: sweeper-${{ github.run_id }}
+          path: |
+            .droid-temp/sweep-results.json
+            .droid-temp/prompt.md
+            .droid-temp/droid-out.json
+            .droid-temp/issues
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ------------------------------------------------------------------
+      # 14. Fail the job on unexpected droid hard failure
+      # ------------------------------------------------------------------
+      - name: Fail on hard error
+        if: steps.haswork.outputs.has_failures == 'true' && steps.classify.outputs.hard_fail == 'true'
+        run: |
+          echo "Droid exec had an unexpected hard failure — failing the job."
+          exit 1
