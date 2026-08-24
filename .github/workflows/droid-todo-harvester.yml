@@ -1,0 +1,439 @@
+# .github/workflows/droid-todo-harvester.yml
+# =============================================================================
+# Scheduled + manual GitHub Action that runs a headless TODO harvest
+# ("Cherry Picker Minion"). It scans every tracked file for TODO / FIXME /
+# XXX comments via scripts/harvest-todos.sh, then opens one GitHub issue per
+# actionable TODO so the Issue Fixer Minion (Builder Minion) has a steady
+# stream of well-scoped work to pick up.
+#
+# Issue authoring is delegated to `droid exec` (it drafts titles + bodies);
+# all outward writes (gh issue create / comment) happen in scripted steps —
+# the agent never runs gh or pushes, matching the Builder / Meter Reader /
+# Sweeper minion convention.
+#
+# Auth/quota/credit failures from droid exec are quiet (green run + warning
+# annotation) so a depleted Factory account does not spam your inbox. On a
+# quiet skip, no issues are created.
+#
+# Runner: ubuntu-latest only. It does NOT "choose a runner" like the Builder
+# Minion — harvesting is a pure text scan and needs no cross-platform
+# validation.
+# =============================================================================
+name: Cherry Picker Minion
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Runs weekly on Mondays at 10:29 UTC (off-the-hour to avoid GitHub cron
+    # spikes). Distinct from Builder Minion (Thu-Mon 09:17), Meter Reader
+    # Minion (Tue 09:53), Security Review Minion (Wed 10:37), and Sweeper
+    # Minion (Sun 10:11). Monday is chosen so freshly harvested TODO issues
+    # are ready at the start of the week for the Builder Minion to pick up.
+    - cron: "29 10 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: droid-todo-harvester
+  cancel-in-progress: false
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    # The scan is fast; droid exec (when TODOs exist) is well under 10 min,
+    # but give it room.
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # ------------------------------------------------------------------
+      # 1. Checkout
+      # ------------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      # ------------------------------------------------------------------
+      # 2. Set up a cross-platform temp directory inside the workspace
+      # ------------------------------------------------------------------
+      # Keep temp files under the repo workspace so relative paths are stable.
+      # Run after checkout so actions/checkout does not wipe it.
+      # ------------------------------------------------------------------
+      - name: Set workflow temp directory
+        id: temp
+        run: |
+          WORKFLOW_TEMP="$GITHUB_WORKSPACE/.droid-temp"
+          mkdir -p "$WORKFLOW_TEMP"
+          echo "WORKFLOW_TEMP=$WORKFLOW_TEMP" >> "$GITHUB_ENV"
+          echo "Workflow temp: $WORKFLOW_TEMP"
+
+      # ------------------------------------------------------------------
+      # 3. Run the TODO harvest
+      # ------------------------------------------------------------------
+      # The script always exits 0; results are encoded in the JSON report.
+      # ------------------------------------------------------------------
+      - name: Run TODO harvest
+        id: harvest
+        run: |
+          scripts/harvest-todos.sh "$WORKFLOW_TEMP/todo-results.json"
+          todos=$(jq '.summary.todos' "$WORKFLOW_TEMP/todo-results.json")
+          scanned=$(jq '.summary.scanned' "$WORKFLOW_TEMP/todo-results.json")
+          truncated=$(jq -r '.summary.truncated' "$WORKFLOW_TEMP/todo-results.json")
+          echo "Files scanned: $scanned"
+          echo "TODOs found: $todos"
+          echo "truncated=$truncated" >> "$GITHUB_OUTPUT"
+          echo "todos=$todos" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Cherry Picker Minion — harvest results"
+            echo ""
+            echo "- Files scanned: **$scanned**"
+            echo "- TODOs found: **$todos**"
+            echo "- Truncated at cap: **$truncated**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 4. Ensure the `todo` label exists + load open issues for dedup
+      # ------------------------------------------------------------------
+      # Dedup: skip TODOs whose [todo] <file>:<line> title or whose TODO text
+      # already appears in an open todo-labeled issue. This step runs before
+      # the short-circuit so the label is guaranteed to exist for any creates
+      # later, and so dedup data is available even on a truncated harvest.
+      # ------------------------------------------------------------------
+      - name: Ensure todo label and load open issues
+        id: dedup
+        if: steps.harvest.outputs.todos != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Create the todo label if it is missing (idempotent via --force).
+          gh label create todo \
+            --description "Harvested from a TODO/FIXME/XXX comment by the Cherry Picker Minion" \
+            --color FBCA04 --force 2>/dev/null || true
+
+          # Load open todo-labeled issues: number, title, body.
+          gh issue list --state open --label todo --json number,title,body \
+            > "$WORKFLOW_TEMP/existing-todo-issues.json" 2>/dev/null \
+            || echo '[]' > "$WORKFLOW_TEMP/existing-todo-issues.json"
+
+          existing_count=$(jq 'length' "$WORKFLOW_TEMP/existing-todo-issues.json")
+          echo "Existing open todo issues: $existing_count"
+
+          # Build the set of already-covered TODO locations (titles) and the
+          # joined body text (for content-based dedup) in one pass.
+          jq -r '
+            reduce .[] as $i (
+              {titles: [], bodies: ""};
+              .titles += [$i.title]
+              | .bodies += ($i.body // "") + "\n"
+            )
+          ' "$WORKFLOW_TEMP/existing-todo-issues.json" \
+            > "$WORKFLOW_TEMP/existing-dedup.json"
+
+      # ------------------------------------------------------------------
+      # 5. Filter harvested TODOs against existing open issues
+      # ------------------------------------------------------------------
+      # A harvested TODO is "new" if NO existing open todo issue has:
+      #   - a title equal to "[todo] <file>:<line> — <kind>" (exact), OR
+      #   - a body containing the TODO's text substring.
+      # The filtered list is written to todo-new.json; if empty, short-circuit.
+      # ------------------------------------------------------------------
+      - name: Filter new TODOs
+        id: newtodos
+        if: steps.harvest.outputs.todos != '0'
+        run: |
+          set -euo pipefail
+
+          results="$WORKFLOW_TEMP/todo-results.json"
+          dedup="$WORKFLOW_TEMP/existing-dedup.json"
+          new="$WORKFLOW_TEMP/todo-new.json"
+
+          if [ ! -s "$dedup" ]; then
+            # No existing issues at all — everything is new.
+            jq '.todos' "$results" > "$new"
+          else
+            # Use literal `contains` (NOT regex `test`) so TODO texts with
+            # regex metacharacters — backslashes, parens, quantifiers — do
+            # not break the filter. Empty text is treated as not-yet-filed
+            # (contains("") is always true, which would wrongly mark every
+            # TODO as a duplicate).
+            jq --slurpfile d "$dedup" '
+              .todos as $todos
+              | ($d[0]) as $ex
+              | $todos
+              | map(. as $t
+                  | ("[todo] " + $t.file + ":" + ($t.line|tostring) + " — " + $t.kind) as $title
+                  | select(
+                      ($ex.titles | index($title) | not)
+                      and (($t.text | length) > 0 and ($ex.bodies | contains($t.text)) | not)
+                    ))
+            ' "$results" > "$new"
+          fi
+
+          new_count=$(jq 'length' "$new")
+          echo "New TODOs after dedup: $new_count"
+          echo "new_count=$new_count" >> "$GITHUB_OUTPUT"
+          if [ "$new_count" -gt 0 ]; then
+            echo "has_new=true" >> "$GITHUB_OUTPUT"
+            {
+              echo ""
+              echo "- New TODOs to file: **$new_count**"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "has_new=false" >> "$GITHUB_OUTPUT"
+            echo "All harvested TODOs already have open issues — done."
+            {
+              echo ""
+              echo "✅ No new TODOs. All harvested entries already have open issues."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # ------------------------------------------------------------------
+      # 6. Install Droid CLI (only when there are new TODOs to file)
+      # ------------------------------------------------------------------
+      # Verbatim from droid-issue-fixer.yml.
+      # ------------------------------------------------------------------
+      - name: Install Droid CLI
+        if: steps.newtodos.outputs.has_new == 'true'
+        run: |
+          curl -fsSL https://app.factory.ai/cli | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/droid" --version
+
+      # ------------------------------------------------------------------
+      # 7. Build the prompt file
+      # ------------------------------------------------------------------
+      - name: Build prompt
+        if: steps.newtodos.outputs.has_new == 'true'
+        run: |
+          cat .github/prompts/todo-harvest.md > "$WORKFLOW_TEMP/prompt.md"
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Harvested TODOs (JSON)"
+            echo ""
+            echo '```json'
+            jq '.todos' "$WORKFLOW_TEMP/todo-new.json"
+            echo '```'
+          } >> "$WORKFLOW_TEMP/prompt.md"
+          echo "Prompt file built ($(wc -l < "$WORKFLOW_TEMP/prompt.md") lines)."
+
+      # ------------------------------------------------------------------
+      # 8. Run droid exec (capture exit code, do not fail the step)
+      # ------------------------------------------------------------------
+      - name: Run droid exec
+        id: droid
+        if: steps.newtodos.outputs.has_new == 'true'
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set +e
+          droid exec \
+            --auto medium \
+            --model kimi-k2.7-code \
+            --output-format json \
+            -f "$WORKFLOW_TEMP/prompt.md" \
+            2>&1 | tee "$WORKFLOW_TEMP/droid-out.json"
+          droid_exit=$?
+          echo "droid_exit=$droid_exit" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # ------------------------------------------------------------------
+      # 9. Classify the droid exec result (quiet-skip on auth/quota/billing)
+      # ------------------------------------------------------------------
+      - name: Classify droid result
+        id: classify
+        if: steps.newtodos.outputs.has_new == 'true'
+        run: |
+          set -euo pipefail
+          droid_exit="${{ steps.droid.outputs.droid_exit }}"
+
+          result_text=""
+          is_error="false"
+          if [ -f "$WORKFLOW_TEMP/droid-out.json" ]; then
+            result_text=$(jq -r '.result // ""' "$WORKFLOW_TEMP/droid-out.json" 2>/dev/null || echo "")
+            is_error=$(jq -r '.is_error // false' "$WORKFLOW_TEMP/droid-out.json" 2>/dev/null || echo "false")
+          fi
+
+          # Auth/quota/billing quiet skip: only when droid exec actually
+          # failed (non-zero exit or is_error=true).
+          if [ "$droid_exit" -ne 0 ] || [ "$is_error" = "true" ]; then
+            quiet_signatures='Authentication failed|invalid.*key|insufficient|quota|limit exceeded|402|403|429|billing|plan limit|rate limit'
+            if echo "$result_text" | grep -iqE "$quiet_signatures"; then
+              echo "::warning::Droid exec hit an auth/quota/billing limit — skipping quietly."
+              echo "Raw droid result (for diagnostics):"
+              echo "$result_text"
+              {
+                echo "## Cherry Picker Minion — quiet skip"
+                echo ""
+                echo "Droid exec returned a quota/auth/billing error and was skipped quietly."
+                echo "No issues were created this run."
+                echo ""
+                echo "**Result:** $result_text"
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "quiet_skip=true" >> "$GITHUB_OUTPUT"
+              echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo "quiet_skip=false" >> "$GITHUB_OUTPUT"
+
+          if [ "$droid_exit" -ne 0 ]; then
+            echo "hard_fail=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Droid exec failed (exit $droid_exit) with an unexpected error."
+            {
+              echo "## Cherry Picker Minion — droid exec failed"
+              echo ""
+              echo "Droid exec exited with code **$droid_exit**. Falling back to scripted issue bodies."
+              echo ""
+              if [ -f "$WORKFLOW_TEMP/droid-out.json" ]; then
+                jq -r '.result // "(no result text)"' "$WORKFLOW_TEMP/droid-out.json" 2>/dev/null \
+                  || cat "$WORKFLOW_TEMP/droid-out.json"
+              else
+                echo "(no output captured)"
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0  # Step succeeds so issue creation can salvage; job fails below.
+          fi
+
+          echo "hard_fail=false" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # 10. Create GitHub issues
+      # ------------------------------------------------------------------
+      # The agent authors issue bodies to .droid-temp/issues/. This step:
+      #   - builds a manifest (prefers the agent's manifest.json; falls back
+      #     to a deterministic one generated from todo-new.json when the agent
+      #     output is missing/unparseable or the run hard-failed);
+      #   - creates one GitHub issue per manifest entry with the `todo` label.
+      # No dedup here — filtering already happened in step 5; all entries in
+      # the manifest are guaranteed new.
+      # ------------------------------------------------------------------
+      - name: Create issues
+        if: steps.newtodos.outputs.has_new == 'true' && steps.classify.outputs.quiet_skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          new="$WORKFLOW_TEMP/todo-new.json"
+          issues_dir="$WORKFLOW_TEMP/issues"
+          mkdir -p "$issues_dir"
+
+          quiet_skip="${{ steps.classify.outputs.quiet_skip }}"
+          hard_fail="${{ steps.classify.outputs.hard_fail }}"
+
+          # --- Decide manifest source ----------------------------------
+          # Prefer the agent's manifest when it is valid JSON with the right
+          # shape and the run did not hard-fail. Otherwise generate a
+          # deterministic fallback manifest + bodies from todo-new.json.
+          use_agent=0
+          agent_manifest="$issues_dir/manifest.json"
+          if [ "$hard_fail" != "true" ] && [ -f "$agent_manifest" ]; then
+            if jq -e 'type == "array" and all(.[]; has("slug") and has("file") and has("line") and has("kind") and has("title") and has("body_file"))' \
+               "$agent_manifest" >/dev/null 2>&1; then
+              use_agent=1
+            fi
+          fi
+
+          if [ "$use_agent" -eq 0 ]; then
+            echo "Using scripted fallback issue bodies."
+            manifest_entries="[]"
+            n=$(jq 'length' "$new")
+            for i in $(seq 0 $((n - 1))); do
+              entry=$(jq -c ".[$i]" "$new")
+              file=$(echo "$entry" | jq -r '.file')
+              line=$(echo "$entry" | jq -r '.line')
+              kind=$(echo "$entry" | jq -r '.kind')
+              text=$(echo "$entry" | jq -r '.text')
+
+              slug=$(printf '%s:%s' "$file" "$line" \
+                | tr -c 'a-zA-Z0-9' '-' | tr 'A-Z' 'a-z' | sed 's/^-*//;s/-*$//')
+              title="[todo] $file:$line — $kind"
+              body="$issues_dir/${slug}.md"
+              {
+                echo "### \`$file:$line\` — $kind"
+                echo ""
+                echo "The Cherry Picker Minion harvested this comment:"
+                echo ""
+                echo '```'
+                echo "$text"
+                echo '```'
+                echo ""
+                echo "## Next steps"
+                echo ""
+                echo "Review the surrounding code at \`$file:$line\`, scope the work, and implement a fix."
+              } > "$body"
+              manifest_entries=$(echo "$manifest_entries" | jq \
+                --arg slug "$slug" --arg file "$file" --argjson line "$line" \
+                --arg kind "$kind" --arg title "$title" --arg body_file "${slug}.md" \
+                '. + [{slug: $slug, file: $file, line: $line, kind: $kind, title: $title, body_file: $body_file}]')
+            done
+            echo "$manifest_entries" > "$agent_manifest"
+          else
+            echo "Using droid-authored issue bodies from $agent_manifest."
+          fi
+
+          # --- Create one issue per manifest entry ---------------------
+          created=0
+          n=$(jq 'length' "$agent_manifest")
+          for i in $(seq 0 $((n - 1))); do
+            entry=$(jq -c ".[$i]" "$agent_manifest")
+            title=$(echo "$entry" | jq -r '.title')
+            body_file=$(echo "$entry" | jq -r '.body_file')
+            body_path="$issues_dir/$body_file"
+
+            if [ ! -f "$body_path" ]; then
+              echo "warn: body file $body_path missing for $title — skipping."
+              continue
+            fi
+
+            issue_url=$(gh issue create \
+              --title "$title" \
+              --body-file "$body_path" \
+              --label todo)
+            created=$((created + 1))
+            echo "Created issue: $title — $issue_url"
+          done
+
+          {
+            echo ""
+            echo "### Issues"
+            echo ""
+            echo "- New issues created: **$created**"
+            echo "- Issue source: $([ "$use_agent" -eq 1 ] && echo 'droid-authored' || echo 'scripted fallback')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------
+      # 11. Upload artifacts (harvest results + droid session)
+      # ------------------------------------------------------------------
+      - name: Upload artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: cherry-picker-${{ github.run_id }}
+          path: |
+            .droid-temp/todo-results.json
+            .droid-temp/todo-new.json
+            .droid-temp/existing-todo-issues.json
+            .droid-temp/existing-dedup.json
+            .droid-temp/prompt.md
+            .droid-temp/droid-out.json
+            .droid-temp/issues
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ------------------------------------------------------------------
+      # 12. Fail the job on unexpected droid hard failure
+      # ------------------------------------------------------------------
+      - name: Fail on hard error
+        if: steps.newtodos.outputs.has_new == 'true' && steps.classify.outputs.hard_fail == 'true'
+        run: |
+          echo "Droid exec had an unexpected hard failure — failing the job."
+          exit 1
