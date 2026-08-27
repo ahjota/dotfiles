@@ -84,6 +84,11 @@ threshold = 30
 style = "bold yellow"
 
 [custom.drconfig]
+# SECURITY NOTE: This segment renders the DataRobot endpoint hostname in the
+# prompt. That can leak internal infrastructure hostnames through screenshots,
+# screen sharing, or recorded terminal sessions. Disable or hide this segment
+# before sharing your screen in public or untrusted contexts.
+#
 # which instance of DataRobot am I connected to?
 # 🤖 / robot face / U+1F916 / Apple Color Emoji required
 # 󱜙 / md-robot_happy / U+F1719 / Nerd Font required
