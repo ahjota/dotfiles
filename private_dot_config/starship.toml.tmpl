@@ -10,8 +10,7 @@ $time\
 $character"""
 
 right_format = """
-$custom.drcli\
-$custom.drconfig\
+${custom.drcli}${custom.drconfig}\
 $time\
 $shlvl"""
 
@@ -85,7 +84,7 @@ threshold = 30
 style = "bold yellow"
 
 [custom.drconfig]
-# quickly show the datarobot endpoint from drconfig.yaml
+# which instance of DataRobot am I connected to?
 # 🤖 / robot face / U+1F916 / Apple Color Emoji required
 # 󱜙 / md-robot_happy / U+F1719 / Nerd Font required
 # 🗿 / moyai / U+1F5FF / Apple Color Emoji required
@@ -93,7 +92,7 @@ style = "bold yellow"
 command = "yq '.endpoint' ~/.config/datarobot/drconfig.yaml | awk -F'/api/v2' '{print $1}' | awk -F'//' '{print $2}' | sed 's/datarobot.com/dr/g'"
 format = "👾 $output"
 description = "The contents of drconfig.yaml"
-shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-eu"]
+shell = ["sh", "-eu"]
 when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
 
 {{ $drcli := "" -}}
@@ -103,13 +102,12 @@ when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
 {{   $drcli = printf "\"%s/.config/starship/scripts/drcli.sh\"" .chezmoi.homeDir -}}
 {{ end -}}
 [custom.drcli]
-# Show the DataRobot CLI version when `dr` is on PATH.
-# Reuses the same 👾 / alien_monster / U+1F47E icon as custom.drconfig.
+# What version of the DataRobot CLI do I have?
 # The OS-specific script defends against a non-DataRobot `dr` binary.
 command = {{ $drcli | squote }}
 format = "👾 $output "
 description = "DataRobot CLI version"
-shell = {{ if eq .chezmoi.os "windows" }}["powershell", "-ExecutionPolicy", "Bypass", "-Command"]{{ else }}["sh", "-c"]{{ end }}
+shell = {{ if eq .chezmoi.os "windows" }}["powershell", "-ExecutionPolicy", "Bypass", "-Command"]{{ else }}["sh"]{{ end }}
 when = {{ $drcli | squote }}
 
 [custom.git_scope]
@@ -122,7 +120,7 @@ printf "%s (%s)" \
 description = 'The currently configured Git user.{email,name}'
 format = 'as [$output]($style) '
 style = 'blue bold'
-shell = ["{{ if eq .chezmoi.os `darwin` }}dash{{ else }}sh{{ end }}", "-e"]
+shell = ["sh", "-e"]
 when = 'git rev-parse --is-inside-work-tree'
 
 [cmd_duration]
