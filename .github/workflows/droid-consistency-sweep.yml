@@ -66,15 +66,14 @@ jobs:
           echo "Workflow temp: $WORKFLOW_TEMP"
 
       # ------------------------------------------------------------------
-      # 3. Install chezmoi (for template rendering)
+      # 3. Install chezmoi (pinned release + SHA-256 verification)
       # ------------------------------------------------------------------
       # Verbatim from droid-issue-fixer.yml (Builder Minion).
       # ------------------------------------------------------------------
       - name: Install chezmoi
         run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          bash .github/scripts/install-pinned-tools.bash.sh chezmoi
           "$HOME/.local/bin/chezmoi" --version
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # ------------------------------------------------------------------
       # 4. Write CI chezmoi config
@@ -184,8 +183,7 @@ jobs:
       - name: Install Droid CLI
         if: steps.haswork.outputs.has_failures == 'true'
         run: |
-          curl -fsSL https://app.factory.ai/cli | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          bash .github/scripts/install-pinned-tools.bash.sh droid
           "$HOME/.local/bin/droid" --version
 
       # ------------------------------------------------------------------

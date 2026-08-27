@@ -56,15 +56,11 @@ jobs:
           echo "Workflow temp: $WORKFLOW_TEMP"
 
       # ------------------------------------------------------------------
-      # 3. Install Droid CLI
+      # 3. Install Droid CLI (pinned release + SHA-256 verification)
       # ------------------------------------------------------------------
       - name: Install Droid CLI
         run: |
-          curl -fsSL https://app.factory.ai/cli | sh
-          # The installer places the binary in ~/.local/bin (or similar);
-          # add it to PATH for this and subsequent steps.
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          # Verify it runs.
+          bash .github/scripts/install-pinned-tools.bash.sh droid
           "$HOME/.local/bin/droid" --version
 
       # ------------------------------------------------------------------

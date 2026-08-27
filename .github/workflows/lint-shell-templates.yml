@@ -26,9 +26,8 @@ jobs:
 
       - name: Install chezmoi
         run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          bash .github/scripts/install-pinned-tools.bash.sh chezmoi
           "$HOME/.local/bin/chezmoi" --version
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install shellcheck
         run: |

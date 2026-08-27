@@ -202,8 +202,7 @@ jobs:
       - name: Install Droid CLI
         if: steps.newtodos.outputs.has_new == 'true'
         run: |
-          curl -fsSL https://app.factory.ai/cli | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          bash .github/scripts/install-pinned-tools.bash.sh droid
           "$HOME/.local/bin/droid" --version
 
       # ------------------------------------------------------------------

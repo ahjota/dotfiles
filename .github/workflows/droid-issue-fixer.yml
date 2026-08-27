@@ -172,11 +172,7 @@ jobs:
       - name: Install Droid CLI
         if: steps.collect.outputs.has_work == 'true'
         run: |
-          curl -fsSL https://app.factory.ai/cli | sh
-          # The installer places the binary in ~/.local/bin (or similar);
-          # add it to PATH for this and subsequent steps.
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          # Verify it runs.
+          bash .github/scripts/install-pinned-tools.bash.sh droid
           "$HOME/.local/bin/droid" --version
 
       # ------------------------------------------------------------------
@@ -185,7 +181,7 @@ jobs:
       - name: Install chezmoi
         if: steps.collect.outputs.has_work == 'true'
         run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          bash .github/scripts/install-pinned-tools.bash.sh chezmoi
           "$HOME/.local/bin/chezmoi" --version
 
       - name: Write CI chezmoi config
