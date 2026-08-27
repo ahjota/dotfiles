@@ -202,7 +202,7 @@ jobs:
       - name: Install Droid CLI
         if: steps.newtodos.outputs.has_new == 'true'
         run: |
-          bash .github/scripts/install-pinned-tools.bash.sh droid
+          bash .github/scripts/install-pinned-tools.sh droid
           "$HOME/.local/bin/droid" --version
 
       # ------------------------------------------------------------------

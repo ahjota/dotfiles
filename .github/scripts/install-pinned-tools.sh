@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# .github/scripts/install-pinned-tools.bash.sh
+# .github/scripts/install-pinned-tools.sh
 # =============================================================================
 # Install pinned, checksum-verified releases of the Factory Droid CLI and
 # chezmoi for use in CI workflows. Replaces remote `curl | sh` installers
 # with version-pinned downloads plus SHA-256 verification.
 #
 # Usage:
-#   install-pinned-tools.bash.sh [droid|chezmoi|all]
+#   install-pinned-tools.sh [droid|chezmoi|all]
 #
 # The binary is installed to "$HOME/.local/bin" and that directory is appended
 # to "$GITHUB_PATH" so subsequent workflow steps can use it.

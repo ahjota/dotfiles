@@ -172,7 +172,7 @@ jobs:
       - name: Install Droid CLI
         if: steps.collect.outputs.has_work == 'true'
         run: |
-          bash .github/scripts/install-pinned-tools.bash.sh droid
+          bash .github/scripts/install-pinned-tools.sh droid
           "$HOME/.local/bin/droid" --version
 
       # ------------------------------------------------------------------
@@ -181,7 +181,7 @@ jobs:
       - name: Install chezmoi
         if: steps.collect.outputs.has_work == 'true'
         run: |
-          bash .github/scripts/install-pinned-tools.bash.sh chezmoi
+          bash .github/scripts/install-pinned-tools.sh chezmoi
           "$HOME/.local/bin/chezmoi" --version
 
       - name: Write CI chezmoi config
