@@ -93,9 +93,34 @@ render() {
     chezmoi execute-template --config "$chezmoi_config" < "$tmpl"
 }
 
-# Infer the shellcheck dialect of a tracked *.sh file: *bash* -> bash, else sh.
+# Infer the shellcheck dialect of a tracked *.sh file.
+#
+# Detection order:
+#   1. # shellcheck shell=<dialect> directive in the first 5 lines
+#   2. shebang interpreter (bash -> bash, anything else -> sh)
+#   3. filename heuristic (*bash* -> bash, else sh)
 dialect_of() {
-    case "$1" in
+    local file="$1"
+    local dialect shebang_shell
+
+    # 1. Explicit shellcheck directive.
+    dialect="$(head -n 5 "$file" | sed -n 's/^[[:space:]]*# shellcheck shell=\([a-zA-Z0-9_]*\).*/\1/p' | head -n 1)"
+    if [ -n "$dialect" ]; then
+        echo "$dialect"
+        return 0
+    fi
+
+    # 2. Shebang interpreter (last token of the #! line).
+    shebang_shell="$(head -n 1 "$file" | awk '{print $NF}')"
+    case "$shebang_shell" in
+        */bash|bash)
+            echo bash
+            return 0
+            ;;
+    esac
+
+    # 3. Filename fallback.
+    case "$file" in
         *bash*) echo bash ;;
         *)      echo sh   ;;
     esac

@@ -21,16 +21,30 @@
 
 [chezmoi](https://www.chezmoi.io/)
 
+Install via a package manager (recommended):
+
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply $GITHUB_USERNAME
+brew install chezmoi
+```
+
+Or use the upstream installer (download and verify before executing):
+
+```sh
+curl -fsLS get.chezmoi.io -o /tmp/install-chezmoi.sh
+# inspect /tmp/install-chezmoi.sh
+cat /tmp/install-chezmoi.sh | sh -s -- init --apply $GITHUB_USERNAME
 ```
 
 ### Recommended
 
 Package Manager: [Homebrew](https://brew.sh/)
 
+Homebrew's installer is a remote script. Download and inspect it before running:
+
 ```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o /tmp/install-homebrew.sh
+# inspect /tmp/install-homebrew.sh
+/bin/bash /tmp/install-homebrew.sh
 ```
 
 Plugin Manager, zsh: [Antidote](https://getantidote.github.io/)
@@ -42,14 +56,30 @@ brew install antidote
 Prompt: [Starship](https://starship.rs/)
 
 ```sh
-curl -sS https://starship.rs/install.sh | sh
+brew install starship
+```
+
+Or use the upstream installer (download and inspect before executing):
+
+```sh
+curl -sS https://starship.rs/install.sh -o /tmp/install-starship.sh
+# inspect /tmp/install-starship.sh
+sh /tmp/install-starship.sh
 ```
 
 Shell History: [Atuin](https://atuin.sh)
 
 ```sh
-# if it isn't already installed via homebrew, as it is in Bazzite-DX...
-curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
+brew install atuin
+atuin setup
+```
+
+Or use the upstream installer (download and inspect before executing):
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh -o /tmp/install-atuin.sh
+# inspect /tmp/install-atuin.sh
+sh /tmp/install-atuin.sh
 atuin setup
 ```
 
