@@ -50,9 +50,11 @@ EOF
 chezmoi_config="$tmpdir/chezmoi.toml"
 
 # Render a chezmoi template to stdout using the non-interactive config.
+# --source "$repo_root" ensures include directives resolve against the
+# repository's source tree rather than the default chezmoi source directory.
 render_template() {
     local tmpl="$1"
-    chezmoi execute-template --config "$chezmoi_config" < "$tmpl"
+    chezmoi execute-template --config "$chezmoi_config" --source "$repo_root" < "$tmpl"
 }
 
 # Lint a rendered bash template with shellcheck.
@@ -72,7 +74,8 @@ lint_sh_template() {
 # Lint a rendered zsh template with zsh -n (shellcheck does not support zsh).
 lint_zsh_template() {
     local tmpl="$1"
-    local rendered="$tmpdir/$(basename "$tmpl" .tmpl)"
+    local rendered
+    rendered="$tmpdir/$(basename "$tmpl" .tmpl)"
     echo "=== $tmpl (zsh) ==="
     render_template "$tmpl" > "$rendered"
     if command -v zsh >/dev/null 2>&1; then
