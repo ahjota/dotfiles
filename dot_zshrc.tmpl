@@ -16,7 +16,11 @@ function zle-keymap-select {
   zle reset-prompt
 }
 zle -N zle-keymap-select
-function zle-line-init { print -n '\e[6 q' }
+# Use POSIX-style function syntax so shellcheck's sh parser accepts the
+# rendered zshrc while keeping the definition valid zsh.
+zle-line-init() {
+  print -n '\e[6 q'
+}
 zle -N zle-line-init
 
 ## Env Vars
@@ -82,21 +86,21 @@ fi
 # whenever atuin is reachable from either path. (Replaces the old OS
 # branch, whose Linux half skipped env and silently no-oped on a
 # curl-only install with atuin not yet on PATH.)
-if [[ -f $HOME/.atuin/bin/env ]] then
+if [[ -f $HOME/.atuin/bin/env ]]; then
   . "$HOME/.atuin/bin/env"
 fi
-if [[ $(command -v atuin) ]] then
+if [[ $(command -v atuin) ]]; then
   eval "$(atuin init zsh)"
   eval "$(atuin gen-completions --shell zsh)"
 fi
 
 # Starship: Cross-Shell Prompt (https://starship.rs/)
-if [[ $(command -v starship) ]] then
+if [[ $(command -v starship) ]]; then
   # You may still need to add this at the end of .zshrc for it to work
   eval "$(starship init zsh)"
 fi
 
-if [[ $(command -v thefuck) ]] then
+if [[ $(command -v thefuck) ]]; then
   eval "$(thefuck --alias)"
 fi
 
@@ -137,17 +141,17 @@ fpath=($HOME/.zsh/completions $fpath)
 
 # Added by Factory Desktop
 {{ if eq .chezmoi.os "darwin" -}}
-if [[ -d "/Applications/Factory.app" ]] then
+if [[ -d "/Applications/Factory.app" ]]; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 {{- else -}}
-if [[ $(command -v factory) ]] then
+if [[ $(command -v factory) ]]; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 {{- end }}
 
 # LM Studio CLI (lms): only add to PATH if installed
-if [[ -d "$HOME/.lmstudio/bin" ]] then
+if [[ -d "$HOME/.lmstudio/bin" ]]; then
   export PATH="$PATH:$HOME/.lmstudio/bin"
 fi
 
