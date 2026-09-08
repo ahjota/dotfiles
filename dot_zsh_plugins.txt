@@ -40,7 +40,9 @@ ahjota/zsh-manydots-magic
 matthiasha/zsh-uv-env kind:defer
 
 # auto-switch node if n is installed.
-# Replaces gretzsky/n.zsh. The upstream switch_n chpwd hook called `exit 1`
-# when `n` wasn't installed and killed the shell on every cd. My fork
-# ahjota/n.zsh fixes this behavior.
-ahjota/n.zsh kind:defer
+# The upstream gretzky/n.zsh repo was renamed to vineyardbovines/n.zsh.
+# The original switch_n chpwd hook still calls `exit 1` when `n` or `jq`
+# isn't installed, which kills the shell on every cd. The previous fork
+# (ahjota/n.zsh) is no longer available, so this points at the renamed
+# upstream; use with care if `n` is not installed.
+vineyardbovines/n.zsh kind:defer
