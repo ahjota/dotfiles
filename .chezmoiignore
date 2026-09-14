@@ -33,6 +33,20 @@ Library/Preferences
 .config/systemd/user/mprime.service
 {{- end }}
 
+# Files managed by chezmoi_modify_manager: *.src.ini are the source-of-truth
+# inputs for modify_ scripts and must never be deployed into ~/.
+**/*.src.ini
+
+# mprime's prime.txt (and the whole org.mersenne.mprime tree) is managed only
+# on GIMPS machines, opted in via `gimps = true` in the machine's chezmoi
+# config [data]. Default is off; the hasKey guard also defaults machines with
+# an older config (no gimps key) to off.
+{{- $gimps := false }}
+{{- if hasKey . "gimps" }}{{ $gimps = .gimps }}{{ end }}
+{{- if not $gimps }}
+.var/app/org.mersenne.mprime
+{{- end }}
+
 # Ignore iTerm2 preferences unless explicitly enabled.
 {{- if not .iterm2 }}
 Library/Preferences/com.googlecode.iterm2.plist

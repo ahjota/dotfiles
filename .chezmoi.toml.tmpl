@@ -7,6 +7,8 @@
 
 {{- $isIterm2Managed := promptBoolOnce . "iterm2" "Manage iTerm2 preferences with chezmoi" -}}
 
+{{- $isGimpsMachine := promptBoolOnce . "gimps" "Run GIMPS (mprime) on this machine" -}}
+
 
 {{- $artifactoryHost := "" -}}
 {{- if $isWorkMachine -}}
@@ -38,6 +40,9 @@ email = {{ $email | quote }}
 work = {{ $isWorkMachine }}
 # whether iTerm2 configuration is managed by chezmoi
 iterm2 = {{ $isIterm2Managed }}
+# whether this machine runs GIMPS (mprime flatpak); gates management of
+# mprime's prime.txt via chezmoi_modify_manager (see .chezmoiignore)
+gimps = {{ $isGimpsMachine }}
 # TODO artifactory does not need to live here; this is a work-related
 # data field.
 artifactoryHost = {{ $artifactoryHost | quote }}

@@ -1,0 +1,53 @@
+#!/usr/bin/env chezmoi_modify_manager
+
+source auto
+
+# mprime's prime.txt mixes user settings (main block, [PrimeNet]) with
+# runtime state ([Internals]). We manage only a hand-picked subset, held in
+# prime.txt.src.ini; everything else is ignored so mprime owns it.
+#
+# IMPORTANT: a key that is neither in prime.txt.src.ini nor ignored here is
+# DELETED from the live file on `chezmoi apply`. If a future mprime version
+# adds new keys, add an ignore line here (or the key to the .src.ini) before
+# applying. Check `chezmoi diff` first.
+
+# mprime runtime state, rewritten at startup / PrimeNet check-in / exit.
+ignore section "Internals"
+
+# Non-subset main-block keys: always take the live system value.
+ignore "<NO_SECTION>" "ComputerGUID"
+ignore "<NO_SECTION>" "StressTester"
+ignore "<NO_SECTION>" "UsePrimenet"
+ignore "<NO_SECTION>" "TortureHyperthreading"
+ignore "<NO_SECTION>" "MinTortureFFT"
+ignore "<NO_SECTION>" "MaxTortureFFT"
+ignore "<NO_SECTION>" "TortureMem"
+ignore "<NO_SECTION>" "TortureTime"
+ignore "<NO_SECTION>" "TortureWeak"
+ignore "<NO_SECTION>" "OutputIterations"
+ignore "<NO_SECTION>" "ResultsFileIterations"
+ignore "<NO_SECTION>" "DiskWriteTime"
+ignore "<NO_SECTION>" "NetworkRetryTime"
+ignore "<NO_SECTION>" "NetworkRetryTime2"
+ignore "<NO_SECTION>" "NumBackupFiles"
+ignore "<NO_SECTION>" "SilentVictory"
+ignore "<NO_SECTION>" "MinBenchFFT"
+ignore "<NO_SECTION>" "MaxBenchFFT"
+ignore "<NO_SECTION>" "BenchErrorCheck"
+ignore "<NO_SECTION>" "BenchNegacyclic"
+ignore "<NO_SECTION>" "OnlyBench5678"
+ignore "<NO_SECTION>" "BenchCores"
+ignore "<NO_SECTION>" "BenchHyperthreads"
+ignore "<NO_SECTION>" "BenchWorkers"
+ignore "<NO_SECTION>" "AllBench"
+ignore "<NO_SECTION>" "BenchTime"
+ignore "<NO_SECTION>" "CPUHours"
+ignore "<NO_SECTION>" "V5UserID"
+ignore "<NO_SECTION>" "ComputerID"
+ignore "<NO_SECTION>" "PRPGerbiczCompareIntervalAdj"
+ignore "<NO_SECTION>" "Priority"
+ignore "<NO_SECTION>" "RunOnBattery"
+
+# Non-subset [PrimeNet] keys.
+ignore "PrimeNet" "DialUp"
+ignore "PrimeNet" "ProxyHost"
