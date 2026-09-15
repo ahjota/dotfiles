@@ -16,8 +16,8 @@ set -euo pipefail
 
 # Pinned versions. Bump these deliberately; the Meter Reader Minion watches
 # hardcoded version numbers in scripts.
-readonly DROID_VERSION="0.205.0"
-readonly CHEZMOI_VERSION="2.72.0"
+readonly DROID_VERSION="0.219.0"
+readonly CHEZMOI_VERSION="2.72.2"
 
 readonly INSTALL_DIR="${HOME}/.local/bin"
 
