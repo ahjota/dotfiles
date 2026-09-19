@@ -51,3 +51,14 @@ ignore "<NO_SECTION>" "RunOnBattery"
 # Non-subset [PrimeNet] keys.
 ignore "PrimeNet" "DialUp"
 ignore "PrimeNet" "ProxyHost"
+
+# ProofArchiveDir is machine-specific (e.g. a local Dropbox path on the
+# primary GIMPS host). When a value is configured, force it into the
+# managed subset; otherwise leave the key untouched so mprime owns it.
+{{ if hasKey . "gimpsArchiveDir" }}{{ if .gimpsArchiveDir }}
+set "<NO_SECTION>" "ProofArchiveDir" "{{ .gimpsArchiveDir }}" separator="="
+{{ else }}
+ignore "<NO_SECTION>" "ProofArchiveDir"
+{{ end }}{{ else }}
+ignore "<NO_SECTION>" "ProofArchiveDir"
+{{ end }}
