@@ -9,6 +9,11 @@
 
 {{- $isGimpsMachine := promptBoolOnce . "gimps" "Run GIMPS (mprime) on this machine" -}}
 
+{{- $gimpsArchiveDir := "" -}}
+{{- if $isGimpsMachine -}}
+{{- $gimpsArchiveDir = promptStringOnce . "gimpsArchiveDir" "GIMPS proof archive directory (empty to let mprime manage it)" "" -}}
+{{- end -}}
+
 
 {{- $artifactoryHost := "" -}}
 {{- if $isWorkMachine -}}
@@ -43,6 +48,8 @@ iterm2 = {{ $isIterm2Managed }}
 # whether this machine runs GIMPS (mprime flatpak); gates management of
 # mprime's prime.txt via chezmoi_modify_manager (see .chezmoiignore)
 gimps = {{ $isGimpsMachine }}
+# Directory for mprime proof archive files. Empty means leave it to mprime.
+gimpsArchiveDir = {{ $gimpsArchiveDir | quote }}
 # TODO artifactory does not need to live here; this is a work-related
 # data field.
 artifactoryHost = {{ $artifactoryHost | quote }}
