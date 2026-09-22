@@ -9,3 +9,6 @@
 
 # ignore codegraph
 .codegraph
+
+# gentle-ai per-repo state
+.atl/
