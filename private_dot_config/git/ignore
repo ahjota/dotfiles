@@ -1,0 +1,14 @@
+# ignore .envrc used by direnv
+# as this should always be my own work
+.envrc
+
+# ignore anything in the .aj folder
+.aj
+
+**/.claude/settings.local.json
+
+# ignore codegraph
+.codegraph
+
+# gentle-ai per-repo state
+.atl/
