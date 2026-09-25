@@ -330,13 +330,53 @@ As of this writing, the repo uses:
   `.claude/skills/tech-debt-epic`.
 - **Pattern 4** (age encryption) for `tech-debt-epic/references/` —
   `worked-example.md` and `jira-fields.md` are stored as
-  `encrypted_dot_claude/skills/tech-debt-epic/references/` (ciphertext).
-  The `.chezmoiignore` gate (Pattern 2) ensures non-work machines never
-  attempt decryption.
+  `dot_claude/skills/tech-debt-epic/references/encrypted_*.md`
+  (ciphertext). The per-file `encrypted_` attribute decrypts them onto
+  `~/.claude/skills/tech-debt-epic/references/` — the previous
+  `encrypted_dot_claude/` layout applied the prefix to a *directory*,
+  which chezmoi deploys literally as `~/encrypted_dot_claude/` raw
+  ciphertext. The `.chezmoiignore` gate (Pattern 2) ensures non-work
+  machines never attempt decryption.
 - `{{- if .work }}` conditionals in `dot_zshrc.tmpl` for work shell setup
   (quantumrc, GPG, env script).
 
 Patterns 3 and 5 are documented for future use but not yet implemented.
+
+## gentle-ai coexistence: seed-then-ignore
+
+[gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) rewrites
+a fixed, hardcoded set of agent config files — including
+`~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md` — injecting its
+own `<!-- gentle-ai:* -->` marker sections while preserving surrounding
+content verbatim. When chezmoi also manages those targets, the two tools
+fight: `chezmoi apply` clobbers the injected sections, and every
+`gentle-ai sync` re-drifts the file from the chezmoi source.
+
+Resolution, using the same gate-flag mechanism as `gimps`:
+
+1. `gentleAi` is prompted at `chezmoi init` and stored in config `[data]`.
+2. The repo keeps seed versions of the contested files:
+   `dot_claude/CLAUDE.md` (slim stub importing `@~/.agents/AGENTS.md`)
+   and `private_dot_config/opencode/AGENTS.md` (copy of the canonical
+   personal rules). Machines without gentle-ai (`gentleAi = false`, the
+   hasKey-guarded default) get them deployed and managed normally.
+3. On gentle-ai machines (`gentleAi = true`), `.chezmoiignore` ignores
+   both targets, so chezmoi never clobbers the injected sections and
+   `chezmoi status` stays quiet. Seed them once manually, then hand them
+   to gentle-ai:
+
+   ```sh
+   cd ~/.local/share/chezmoi
+   cp dot_claude/CLAUDE.md ~/.claude/CLAUDE.md
+   cp private_dot_config/opencode/AGENTS.md ~/.config/opencode/AGENTS.md
+   gentle-ai sync
+   ```
+
+4. `gentle-ai sync` is the only writer of those files from then on.
+
+Never symlink these targets to `~/.agents/AGENTS.md` instead: gentle-ai's
+atomic writer fails closed on symlink targets (it refuses to read or
+write through symlinks), which breaks `gentle-ai install`/`sync`.
 
 ## Encryption setup log
 

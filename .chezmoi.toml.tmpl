@@ -9,6 +9,8 @@
 
 {{- $isGimpsMachine := promptBoolOnce . "gimps" "Run GIMPS (mprime) on this machine" -}}
 
+{{- $isGentleAiMachine := promptBoolOnce . "gentleAi" "Use gentle-ai to manage agent prompt files (CLAUDE.md, opencode AGENTS.md) on this machine" -}}
+
 
 {{- $artifactoryHost := "" -}}
 {{- if $isWorkMachine -}}
@@ -43,6 +45,13 @@ iterm2 = {{ $isIterm2Managed }}
 # whether this machine runs GIMPS (mprime flatpak); gates management of
 # mprime's prime.txt via chezmoi_modify_manager (see .chezmoiignore)
 gimps = {{ $isGimpsMachine }}
+# whether gentle-ai (https://github.com/Gentleman-Programming/gentle-ai)
+# rewrites this machine's agent prompt files. When true, chezmoi seeds
+# ~/.claude/CLAUDE.md and ~/.config/opencode/AGENTS.md once (see
+# docs/work-dotfiles.md "gentle-ai coexistence") and then ignores both
+# targets (see .chezmoiignore) so `chezmoi apply` never clobbers
+# gentle-ai's injected sections.
+gentleAi = {{ $isGentleAiMachine }}
 # TODO artifactory does not need to live here; this is a work-related
 # data field.
 artifactoryHost = {{ $artifactoryHost | quote }}

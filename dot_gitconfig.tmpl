@@ -69,6 +69,8 @@
 	# safer force-push: aborts if the remote has commits you don't have locally
 	please = push --force-with-lease
 	praise = blame
+	# pull the default branch from upstream, then push it to origin — keep a fork in sync
+	syncfork = !git pull upstream $(git default-branch) && git push origin $(git default-branch)
 
 	# https://haacked.com/archive/2014/07/28/github-flow-aliases/
 	up = !git pull --rebase --prune \"$@\" && git submodule update --init --recursive
