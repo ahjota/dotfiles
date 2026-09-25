@@ -1,20 +1,25 @@
+{{- /* Normalize the configured Artifactory host: tolerate an optional
+     scheme prefix and trailing slash so `trusted-host` gets a bare
+     hostname and index URLs never render a doubled scheme (the config
+     value may be stored as e.g. "https://host/"). */ -}}
+{{- $artifactory := trimSuffix "/" (trimPrefix "https://" (trimPrefix "http://" .artifactoryHost)) -}}
 [install]
 {{- if .work }}
-trusted-host = {{ .artifactoryHost }}
+trusted-host = {{ $artifactory }}
 {{- end }}
 index-url = https://pypi.org/simple
 {{- if .work }}
 extra-index-url =
-        https://{{ .artifactoryHost }}/artifactory/api/pypi/python-all/simple
-        https://{{ .artifactoryHost }}/artifactory/api/pypi/python-dev/simple
-        https://{{ .artifactoryHost }}/artifactory/api/pypi/datarobot-python-dev/cfx/simple
+        https://{{ $artifactory }}/artifactory/api/pypi/python-all/simple
+        https://{{ $artifactory }}/artifactory/api/pypi/python-dev/simple
+        https://{{ $artifactory }}/artifactory/api/pypi/datarobot-python-dev/cfx/simple
 {{- end }}
 
 [global]
 {{- if .work }}
 # below e-idx required for JJB venv
 extra-index-url =
-        https://{{ .artifactoryHost }}/artifactory/api/pypi/python-all/simple
+        https://{{ $artifactory }}/artifactory/api/pypi/python-all/simple
         https://pypi.org
 {{- else }}
 extra-index-url =

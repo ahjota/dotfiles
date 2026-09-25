@@ -12,6 +12,10 @@ README.md
 LICENSE
 scripts
 
+# Transient backups (e.g. pre-reset copies of agent prompt files) live in
+# the repo's gitignored tmp/ dir; they must never deploy into ~/tmp.
+tmp/*.bak
+
 # GitHub Actions workflows and CI prompts are repo-internal only;
 # chezmoi should never deploy them into ~/.
 .github
@@ -37,14 +41,36 @@ Library/Preferences
 # inputs for modify_ scripts and must never be deployed into ~/.
 **/*.src.ini
 
-# mprime's prime.txt (and the whole org.mersenne.mprime tree) is managed only
-# on GIMPS machines, opted in via `gimps = true` in the machine's chezmoi
-# config [data]. Default is off; the hasKey guard also defaults machines with
-# an older config (no gimps key) to off.
+# mprime's ~/.var tree is managed only on GIMPS machines, opted in via
+# `gimps = true` in the machine's chezmoi config [data]. Default is off;
+# the hasKey guard also defaults machines with an older config (no gimps
+# key) to off. The whole .var tree is gated (not just the mprime app dir)
+# so non-GIMPS machines never get empty ~/.var directories created.
 {{- $gimps := false }}
 {{- if hasKey . "gimps" }}{{ $gimps = .gimps }}{{ end }}
 {{- if not $gimps }}
-.var/app/org.mersenne.mprime
+.var
+{{- end }}
+
+# Agent prompt files that gentle-ai rewrites (marker-delimited sections).
+# On machines with `gentleAi = true`, chezmoi seeds these targets once
+# (see docs/work-dotfiles.md "gentle-ai coexistence") and then ignores
+# them, so `chezmoi apply` never clobbers gentle-ai's injected sections
+# and `gentle-ai sync` never re-drifts them against the source. Default
+# is off (hasKey guard): machines without gentle-ai keep the files fully
+# chezmoi-managed.
+{{- $gentleAi := false }}
+{{- if hasKey . "gentleAi" }}{{ $gentleAi = .gentleAi }}{{ end }}
+{{- if $gentleAi }}
+.claude/CLAUDE.md
+.config/opencode/AGENTS.md
+{{- end }}
+
+# .pypirc holds work PyPI credentials and is stored age-encrypted
+# (docs/work-dotfiles.md Pattern 4). Non-work machines have no age key
+# and must never attempt decryption.
+{{- if not .work }}
+.pypirc
 {{- end }}
 
 # Ignore iTerm2 preferences unless explicitly enabled.
