@@ -35,7 +35,7 @@ jobs:
       - name: Run Droid Exec
         # Pinned to v7 (SHA) instead of @main to avoid running an unexpected
         # action version if the branch is force-pushed or moved.
-        uses: Factory-AI/droid-action@ad22b1dd6c3cc809877cf872e4d22c0a07981f48 # v8
+        uses: Factory-AI/droid-action@efd4574f8244f28cf1da43e7733fd36840ba2880 # v9
         with:
           factory_api_key: ${{ secrets.FACTORY_API_KEY }}
           droid_args: --model kimi-k2.7-code
