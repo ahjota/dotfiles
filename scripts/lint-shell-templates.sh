@@ -72,7 +72,11 @@ lint_sh_template() {
 # Lint a rendered zsh template with zsh -n (shellcheck does not support zsh).
 lint_zsh_template() {
     local tmpl="$1"
-    local rendered="$tmpdir/$(basename "$tmpl" .tmpl)"
+    # Declare and assign separately so a failed command substitution in the
+    # assignment is not masked by `local`'s always-zero exit status
+    # (shellcheck SC2155).
+    local rendered
+    rendered="$tmpdir/$(basename "$tmpl" .tmpl)"
     echo "=== $tmpl (zsh) ==="
     render_template "$tmpl" > "$rendered"
     if command -v zsh >/dev/null 2>&1; then
