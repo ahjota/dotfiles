@@ -94,4 +94,5 @@ Library/Preferences/com.googlecode.iterm2.plist
 workspace/DataRobot
 .claude/skills/tech-debt-epic
 .shellrc.d/06-work-env.sh
+.local/bin/good-morning
 {{- end }}
