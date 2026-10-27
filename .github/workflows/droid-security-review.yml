@@ -207,7 +207,7 @@ jobs:
       - name: Upload droid session artifacts
         if: steps.classify.outputs.quiet_skip != 'true'
         continue-on-error: true
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: droid-security-review-${{ github.run_id }}
           path: |
