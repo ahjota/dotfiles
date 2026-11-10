@@ -1,0 +1,200 @@
+#!/bin/sh
+# good-morning: daily auth bootstrap for work machines.
+#
+# Walks through every credential the day's tooling depends on, refreshes
+# what has expired, and prints a one-line-per-check report:
+#   1. AWS SSO sessions (sso-ci-stg, nbx-dev)    login only if expired
+#   2. ffwatch doctor                            credential presence report
+#   3. Live token probes                         Slack, Harness, Atlassian (acli)
+#   4. DataRobot CLI (`dr auth check`)           default, ffwatch, staging profiles
+#
+# Failures offer an interactive fix when stdin/stdout are a terminal; without
+# a TTY the script only reports. Exit status is 0 when every check is green
+# (after any fixes), 1 otherwise.
+#
+# Work-only: chezmoi deploys this file only when `.work` is true (see the
+# "Ignore work files" block in .chezmoiignore and docs/work-dotfiles.md).
+
+set -u
+
+# --- output helpers ---------------------------------------------------------
+
+TOTAL=0   # checks attempted
+FAILED=0  # checks still red at the end
+
+# Color only when stdout is a terminal.
+if [ -t 1 ]; then
+	GREEN=$(printf '\033[32m'); RED=$(printf '\033[31m')
+	BOLD=$(printf '\033[1m'); RESET=$(printf '\033[0m')
+else
+	GREEN=''; RED=''; BOLD=''; RESET=''
+fi
+
+# Interactive fixes are offered only when both ends are a terminal.
+INTERACTIVE=0
+if [ -t 0 ] && [ -t 1 ]; then INTERACTIVE=1; fi
+
+# section TITLE: print a section header.
+section() { printf '\n%s== %s ==%s\n' "$BOLD" "$1" "$RESET"; }
+
+# pass MSG / fail MSG: record one check result.
+pass() { TOTAL=$((TOTAL + 1)); printf '  %sok%s    %s\n' "$GREEN" "$RESET" "$1"; }
+fail() { TOTAL=$((TOTAL + 1)); FAILED=$((FAILED + 1)); printf '  %sFAIL%s  %s\n' "$RED" "$RESET" "$1"; }
+
+# confirm PROMPT: ask a y/N question; always "no" when non-interactive.
+confirm() {
+	[ "$INTERACTIVE" -eq 1 ] || return 1
+	printf '        %s [y/N] ' "$1"
+	read -r answer || return 1
+	case $answer in [yY] | [yY][eE][sS]) return 0 ;; *) return 1 ;; esac
+}
+
+# --- secrets ----------------------------------------------------------------
+
+# Load KEY=VALUE pairs from the ffwatch secrets file without overriding
+# variables already set in the environment (same "shell wins" rule ffwatch
+# uses). Parsed line by line rather than sourced, so the file is never executed.
+SECRETS_FILE="${HOME}/.config/datarobot/ffwatch/secrets.env"
+if [ -f "$SECRETS_FILE" ]; then
+	while IFS= read -r line || [ -n "$line" ]; do
+		case $line in '' | '#'*) continue ;; esac
+		key=${line%%=*}
+		val=${line#*=}
+		# Strip one pair of surrounding quotes, if any.
+		case $val in
+			\"*\") val=${val#\"}; val=${val%\"} ;;
+			\'*\') val=${val#\'}; val=${val%\'} ;;
+		esac
+		case $key in *[!A-Za-z0-9_]* | '') continue ;; esac
+		eval "current=\${$key:-}"
+		if [ -z "$current" ] && [ -n "$val" ]; then
+			export "$key=$val"
+		fi
+	done <"$SECRETS_FILE"
+fi
+
+# --- 1. AWS SSO -------------------------------------------------------------
+
+# aws_ok PROFILE: true when the profile's SSO session still yields credentials.
+aws_ok() { aws sts get-caller-identity --profile "$1" --no-cli-pager >/dev/null 2>&1; }
+
+section "AWS SSO"
+if ! command -v aws >/dev/null 2>&1; then
+	fail "aws CLI not found"
+else
+	for profile in sso-ci-stg nbx-dev; do
+		if aws_ok "$profile"; then
+			pass "aws $profile"
+		else
+			# Login opens a browser, so only attempt it with a terminal.
+			if [ "$INTERACTIVE" -eq 1 ]; then
+				printf '  ..    aws %s expired, logging in\n' "$profile"
+				aws sso login --profile "$profile"
+			fi
+			if aws_ok "$profile"; then
+				pass "aws $profile (refreshed)"
+			else
+				fail "aws $profile (run: aws sso login --profile $profile)"
+			fi
+		fi
+	done
+fi
+
+# --- 2. ffwatch doctor ------------------------------------------------------
+
+section "ffwatch doctor"
+if ! command -v ffwatch >/dev/null 2>&1; then
+	fail "ffwatch not found"
+else
+	# Presence report only; the live probes below prove the tokens work.
+	ffwatch doctor 2>&1 | sed 's/^/  /'
+	pass "ffwatch doctor ran (review the credential rungs above)"
+fi
+
+# --- 3. Live token probes ---------------------------------------------------
+
+section "Token probes"
+
+# Slack: auth.test returns {"ok":true,...} for a valid user token.
+if [ -z "${SLACK_USER_TOKEN:-}" ]; then
+	fail "slack: SLACK_USER_TOKEN is empty (set it in $SECRETS_FILE)"
+elif curl -fsS -m 15 -H "Authorization: Bearer $SLACK_USER_TOKEN" \
+	https://slack.com/api/auth.test 2>/dev/null | grep -q '"ok":true'; then
+	pass "slack token"
+else
+	fail "slack token rejected (refresh SLACK_USER_TOKEN in $SECRETS_FILE)"
+fi
+
+# Harness: a PAT is "pat.<accountId>.<tokenId>.<secret>" and goes in x-api-key,
+# the same scheme ffwatch's harness_client uses against /gateway.
+if [ -z "${HARNESS_TOKEN:-}" ]; then
+	fail "harness: HARNESS_TOKEN is empty (set it in $SECRETS_FILE)"
+else
+	acct=$(printf '%s' "$HARNESS_TOKEN" | cut -d. -f2)
+	code=$(curl -s -m 15 -o /dev/null -w '%{http_code}' \
+		-H "x-api-key: $HARNESS_TOKEN" \
+		"https://app.harness.io/gateway/ng/api/user/currentUser?accountIdentifier=${acct}")
+	case $code in
+		200) pass "harness token" ;;
+		401 | 403) fail "harness token rejected, HTTP $code (refresh HARNESS_TOKEN in $SECRETS_FILE)" ;;
+		*) fail "harness probe inconclusive, HTTP $code" ;;
+	esac
+fi
+
+# Atlassian: acli exits non-zero when its OAuth session is missing or expired.
+if ! command -v acli >/dev/null 2>&1; then
+	fail "atlassian: acli not found"
+elif acli auth status >/dev/null 2>&1; then
+	pass "atlassian (acli)"
+else
+	if confirm "atlassian: not authenticated. Run 'acli auth login'?"; then
+		acli auth login
+	fi
+	if acli auth status >/dev/null 2>&1; then
+		pass "atlassian (acli, refreshed)"
+	else
+		fail "atlassian (run: acli auth login)"
+	fi
+fi
+
+# --- 4. DataRobot CLI -------------------------------------------------------
+
+# dr_check PROFILE: `dr auth check`, with --profile when PROFILE is non-empty.
+dr_check() {
+	if [ -n "$1" ]; then dr --profile "$1" auth check >/dev/null 2>&1
+	else dr auth check >/dev/null 2>&1; fi
+}
+
+# dr_login PROFILE: interactive browser login for the same profile.
+dr_login() {
+	if [ -n "$1" ]; then dr --profile "$1" auth login
+	else dr auth login; fi
+}
+
+section "DataRobot CLI (dr auth check)"
+if ! command -v dr >/dev/null 2>&1; then
+	fail "dr not found"
+else
+	# An empty name means the default profile (no --profile flag).
+	for profile in "" ffwatch staging; do
+		label=${profile:-default}
+		if dr_check "$profile"; then
+			pass "dr profile: $label"
+		else
+			if confirm "dr profile '$label' failed auth check. Run 'dr auth login'?"; then
+				dr_login "$profile"
+			fi
+			if dr_check "$profile"; then
+				pass "dr profile: $label (refreshed)"
+			else
+				fail "dr profile: $label (run: dr ${profile:+--profile $profile }auth login)"
+			fi
+		fi
+	done
+fi
+
+# --- summary ----------------------------------------------------------------
+
+GREEN_COUNT=$((TOTAL - FAILED))
+printf '\n%s%d/%d checks green%s\n' "$BOLD" "$GREEN_COUNT" "$TOTAL" "$RESET"
+[ "$FAILED" -eq 0 ]

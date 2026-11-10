@@ -89,16 +89,108 @@ style = "bold yellow"
 # screen sharing, or recorded terminal sessions. Disable or hide this segment
 # before sharing your screen in public or untrusted contexts.
 #
-# which instance of DataRobot am I connected to?
+# which DataRobot auth profile am I using, which instance does it point at,
+# and is its token set?
 # 🤖 / robot face / U+1F916 / Apple Color Emoji required
 # 󱜙 / md-robot_happy / U+F1719 / Nerd Font required
 # 🗿 / moyai / U+1F5FF / Apple Color Emoji required
 # 👾 / alien_monster / U+1F47E / Apple Color Emoji required
-command = "yq '.endpoint' ~/.config/datarobot/drconfig.yaml | awk -F'/api/v2' '{print $1}' | awk -F'//' '{print $2}' | sed 's/datarobot.com/dr/g'"
+# This replicates the DataRobot CLI v0.20.0 auth-profile semantics
+# (datarobot-oss/cli#1060, internal/config/profile.go) by parsing
+# drconfig.yaml directly instead of invoking `dr`: a CLI call costs ~600ms
+# per prompt render, and a version probe would cost the same.
+#
+#   - The profile selection is --profile <name> or DATAROBOT_CLI_PROFILE=<name>,
+#     normalized to lowercase with surrounding whitespace trimmed. In a prompt
+#     only the env var (and a hand-edited top-level `profile:` key, which
+#     viper honors below the env var) can apply.
+#   - An omitted selection uses the root-level credentials (the top-level
+#     endpoint/token); it never activates a profiles.default section. An
+#     explicit profiles.default section is a real profile, selected only by
+#     naming "default".
+#   - Pairing is atomic: a profile section that defines endpoint or token
+#     supplies both (the omitted one is empty); a section that defines
+#     neither inherits the root-level values.
+#   - CLI versions older than v0.20.0 ignore a hand-edited profiles.default
+#     section instead of treating it as an explicit profile.
+#
+# Requires mikefarah yq v4 (with_entries/downcase); the python yq jq-wrapper
+# is rejected by the `when` guard below.
+command = '''
+cfg="$HOME/.config/datarobot/drconfig.yaml"
+
+# NormalizeProfileName: lowercase + trim. The env var outranks a hand-edited
+# top-level `profile:` key, which viper honors from the config layer.
+profile="$(printf '%s' "${DATAROBOT_CLI_PROFILE-}" | tr '[:upper:]' '[:lower:]' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+if [ -z "$profile" ]; then
+    profile="$(yq '.profile // ""' "$cfg")"
+fi
+
+case "$profile" in
+    "")
+        # Omitted selection: the root-level credentials. This never
+        # activates a profiles.default section.
+        label="default"
+        endpoint="$(yq '.endpoint // ""' "$cfg")"
+        token="$(yq '.token // ""' "$cfg")"
+        ;;
+    [a-z0-9][a-z0-9_-]*)
+        # viper lowercases config keys on read, so match the section name
+        # case-insensitively.
+        if ! yq "(.profiles // {}) | with_entries(.key |= downcase) | has(\"$profile\")" "$cfg" | grep -qx true; then
+            # No such section: `dr` errors out the same way.
+            printf '%s: unknown profile ✗\n' "$profile"
+            exit 0
+        fi
+
+        if [ "$profile" = "default" ]; then
+            # An explicit profiles.default section, distinct from the root
+            # credentials despite the identical name.
+            label="default (explicit)"
+        else
+            label="$profile"
+        fi
+
+        sec_endpoint="$(yq "(.profiles // {}) | with_entries(.key |= downcase) | .[\"$profile\"].endpoint // \"\"" "$cfg")"
+        sec_token="$(yq "(.profiles // {}) | with_entries(.key |= downcase) | .[\"$profile\"].token // \"\"" "$cfg")"
+
+        if [ -n "$sec_endpoint" ] || [ -n "$sec_token" ]; then
+            # The section defines the endpoint/token pair atomically; an
+            # omitted half is empty, not inherited.
+            endpoint="$sec_endpoint"
+            token="$sec_token"
+        else
+            # The section defines neither: inherit the root-level values.
+            endpoint="$(yq '.endpoint // ""' "$cfg")"
+            token="$(yq '.token // ""' "$cfg")"
+        fi
+        ;;
+    *)
+        # The CLI rejects names outside [A-Za-z0-9][A-Za-z0-9_-]*.
+        printf '%s: unknown profile ✗\n' "$profile"
+        exit 0
+        ;;
+esac
+
+# Shorten the endpoint to a display hostname.
+host="$(printf '%s' "$endpoint" | awk -F'/api/v2' '{print $1}' | awk -F'//' '{print $2}' | sed 's/datarobot.com/dr/g')"
+
+if [ -n "$token" ]; then
+    glyph="✓"
+else
+    glyph="✗"
+fi
+
+if [ -n "$host" ]; then
+    printf '%s: %s %s\n' "$label" "$host" "$glyph"
+else
+    printf '%s: %s\n' "$label" "$glyph"
+fi
+'''
 format = "👾 $output"
-description = "The contents of drconfig.yaml"
+description = "Active DataRobot CLI auth profile, endpoint hostname, and token presence"
 shell = ["sh", "-eu"]
-when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq"
+when = "test -e ~/.config/datarobot/drconfig.yaml && command -v yq && yq --version 2>/dev/null | grep -q mikefarah"
 
 {{ $drcli := "" -}}
 {{ if eq .chezmoi.os "windows" -}}
