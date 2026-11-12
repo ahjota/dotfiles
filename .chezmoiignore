@@ -94,5 +94,7 @@ Library/Preferences/com.googlecode.iterm2.plist
 workspace/DataRobot
 .claude/skills/tech-debt-epic
 .shellrc.d/06-work-env.sh
+# .terraformrc (Terraform plugin cache) is only wanted on work machines.
+.terraformrc
 .local/bin/good-morning
 {{- end }}
