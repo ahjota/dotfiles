@@ -98,3 +98,15 @@ When using Atlassian MCP tools (JIRA, Confluence), always default to **standard 
 
 - Confirm doc structure/scope before drafting, not after.
 - When the recommendation changes, audit every downstream section that assumed the old one.
+
+## CodeGraph
+
+- For call-flow, dependency, symbol-reference, and impact questions in repos that already have a `.codegraph/` index, prefer `codegraph_explore` (MCP) or the read-only CLI commands (`codegraph explore`, `query`, `node`, `files`, `callers`, `callees`, `impact`, `affected`) over broad filesystem searches.
+- If `.codegraph/` is missing in a real project, run `gentle-ai codegraph init --cwd <project-root>` once without asking. Never initialize `$HOME`, temporary directories, or an enclosing repository in place of the explicit working-directory target.
+- Before CLI intelligence reads, run `codegraph sync -q <project-root>`; an existing index is not proof of freshness.
+- Agents run read-only commands plus `init` only. Lifecycle commands (`uninit`, `upgrade`, `index` rebuilds, `install`) are run by the user, never the agent.
+- Every worktree gets its own `.codegraph/` index; never copy or symlink an index between checkouts.
+
+## Worktree placement
+
+- All git worktrees are created at `<repo>/.aj/workspaces/<repo-name>/<worktree-name>` (Orca's layout). This supersedes any guidance suggesting `<repo-parent>/<repo-name>-worktrees/` sibling directories; never place worktrees under `/tmp`.
