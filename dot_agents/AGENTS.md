@@ -69,6 +69,11 @@ git commit -F /tmp/commit-msg.txt
 
 For git commits specifically, `git commit -F - <<'EOF'` (stdin heredoc without command substitution) works reliably and avoids the issue entirely.
 
+### GitHub PR descriptions
+
+- PR descriptions use CRLF line endings, as GitHub's web editor saves them. Before `gh pr create`/`gh pr edit --body-file`, convert the body with `perl -pi -e 's/\r?\n/\r\n/' <file>`; this is safe to run twice.
+- Before editing a PR description, re-fetch it with `gh pr view <n> --json body -q .body` and change only the sections that need it. Never overwrite the description from a local draft; the author may have edited it on GitHub.
+
 ## Output Formats
 
 - BUGBOT.md and `.cursor/` rule files should be formatted as Cursor bugbot reference guides (machine-readable rule files), NOT human-readable checklists.
