@@ -52,6 +52,10 @@ Override default behavior: Always provide in-line comments and docstrings for an
 
 This applies to all tools that use the Read capability (Claude Code, Droid CLI, etc.).
 
+### zsh does not word-split unquoted variables
+
+The agent shell is zsh, not bash. zsh does not split an unquoted `$var` on spaces. Instead, pass each argument explicitly, or use an array and expand it, or run the loop under `bash -c`.
+
 ### Shell heredocs inside command substitution
 
 Heredocs inside `$(...)` command substitution are fragile in POSIX shell. The closing delimiter and closing `)` can confuse the parser, especially when the heredoc body contains parentheses, backticks, or `$` characters. This affects patterns like `gh pr create --body "$(cat <<'EOF' ... EOF)"`.
@@ -64,6 +68,11 @@ git commit -F /tmp/commit-msg.txt
 ```
 
 For git commits specifically, `git commit -F - <<'EOF'` (stdin heredoc without command substitution) works reliably and avoids the issue entirely.
+
+### GitHub PR descriptions
+
+- PR descriptions use CRLF line endings, as GitHub's web editor saves them. Before `gh pr create`/`gh pr edit --body-file`, convert the body with `perl -pi -e 's/\r?\n/\r\n/' <file>`; this is safe to run twice.
+- Before editing a PR description, re-fetch it with `gh pr view <n> --json body -q .body` and change only the sections that need it. Never overwrite the description from a local draft; the author may have edited it on GitHub.
 
 ## Output Formats
 
@@ -98,3 +107,15 @@ When using Atlassian MCP tools (JIRA, Confluence), always default to **standard 
 
 - Confirm doc structure/scope before drafting, not after.
 - When the recommendation changes, audit every downstream section that assumed the old one.
+
+## CodeGraph
+
+- For call-flow, dependency, symbol-reference, and impact questions in repos that already have a `.codegraph/` index, prefer `codegraph_explore` (MCP) or the read-only CLI commands (`codegraph explore`, `query`, `node`, `files`, `callers`, `callees`, `impact`, `affected`) over broad filesystem searches.
+- If `.codegraph/` is missing in a real project, run `gentle-ai codegraph init --cwd <project-root>` once without asking. Never initialize `$HOME`, temporary directories, or an enclosing repository in place of the explicit working-directory target.
+- Before CLI intelligence reads, run `codegraph sync -q <project-root>`; an existing index is not proof of freshness.
+- Agents run read-only commands plus `init` only. Lifecycle commands (`uninit`, `upgrade`, `index` rebuilds, `install`) are run by the user, never the agent.
+- Every worktree gets its own `.codegraph/` index; never copy or symlink an index between checkouts.
+
+## Worktree placement
+
+- All git worktrees are created at `<repo>/.aj/workspaces/<repo-name>/<worktree-name>` (Orca's layout). This supersedes any guidance suggesting `<repo-parent>/<repo-name>-worktrees/` sibling directories; never place worktrees under `/tmp`.
