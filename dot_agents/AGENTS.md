@@ -52,6 +52,10 @@ Override default behavior: Always provide in-line comments and docstrings for an
 
 This applies to all tools that use the Read capability (Claude Code, Droid CLI, etc.).
 
+### zsh does not word-split unquoted variables
+
+The agent shell is zsh, not bash. zsh does not split an unquoted `$var` on spaces. Instead, pass each argument explicitly, or use an array and expand it, or run the loop under `bash -c`.
+
 ### Shell heredocs inside command substitution
 
 Heredocs inside `$(...)` command substitution are fragile in POSIX shell. The closing delimiter and closing `)` can confuse the parser, especially when the heredoc body contains parentheses, backticks, or `$` characters. This affects patterns like `gh pr create --body "$(cat <<'EOF' ... EOF)"`.
