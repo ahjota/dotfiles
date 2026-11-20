@@ -3,10 +3,14 @@
 #
 # Walks through every credential the day's tooling depends on, refreshes
 # what has expired, and prints a one-line-per-check report:
-#   1. AWS SSO sessions (sso-ci-stg, nbx-dev)    login only if expired
+#   1. AWS SSO sessions                          every SSO session found in
+#                                                ~/.aws/config; one login per
+#                                                session, only if expired
 #   2. ffwatch doctor                            credential presence report
 #   3. Live token probes                         Slack, Harness, Atlassian (acli)
-#   4. DataRobot CLI (`dr auth check`)           default, ffwatch, staging profiles
+#   4. DataRobot CLI (`dr auth check`)           every profile from
+#                                                `dr auth profile list`, minus
+#                                                DR_PROFILE_EXCLUDE
 #
 # Failures offer an interactive fix when stdin/stdout are a terminal; without
 # a TTY the script only reports. Exit status is 0 when every check is green
@@ -16,6 +20,10 @@
 # "Ignore work files" block in .chezmoiignore and docs/work-dotfiles.md).
 
 set -u
+
+# Space-separated dr profile names to skip (e.g. "bad heyyo"). Override from the
+# environment: DR_PROFILE_EXCLUDE="bad heyyo" good-morning
+DR_PROFILE_EXCLUDE=${DR_PROFILE_EXCLUDE:-}
 
 # --- output helpers ---------------------------------------------------------
 
@@ -78,26 +86,79 @@ fi
 # aws_ok PROFILE: true when the profile's SSO session still yields credentials.
 aws_ok() { aws sts get-caller-identity --profile "$1" --no-cli-pager >/dev/null 2>&1; }
 
+# aws_groups: print one line per SSO login group found in ~/.aws/config, as
+# "<group key><TAB><space-separated profile names>". Profiles that name an
+# sso_session group by that name (one login refreshes all of them). Legacy
+# profiles with an inline sso_start_url group by that URL, since they share one
+# token cache. Profiles without SSO settings are skipped.
+aws_groups() {
+	awk '
+		# Close out the profile being parsed and file it under its group.
+		function flush(   key) {
+			if (name == "") return
+			key = (sess != "") ? sess : (url != "" ? "legacy:" url : "")
+			if (key == "") return
+			if (!(key in members)) order[n++] = key
+			members[key] = (key in members) ? members[key] " " name : name
+		}
+		/^[[:space:]]*\[/ {
+			flush()
+			name = ""; sess = ""; url = ""
+			# Only [profile X] blocks count; [sso-session X], [default] etc. do not.
+			if ($0 ~ /^[[:space:]]*\[profile[[:space:]]+/) {
+				name = $0
+				sub(/^[[:space:]]*\[profile[[:space:]]+/, "", name)
+				sub(/[[:space:]]*\][[:space:]]*$/, "", name)
+				gsub(/^'\''|'\''$|^"|"$/, "", name)
+			}
+			next
+		}
+		name != "" && /=/ {
+			k = $0; sub(/[[:space:]]*=.*$/, "", k); gsub(/^[[:space:]]+/, "", k)
+			v = $0; sub(/^[^=]*=[[:space:]]*/, "", v); sub(/[[:space:]]+$/, "", v)
+			if (k == "sso_session") sess = v
+			else if (k == "sso_start_url") url = v
+		}
+		END {
+			flush()
+			for (i = 0; i < n; i++) printf "%s\t%s\n", order[i], members[order[i]]
+		}
+	' "${AWS_CONFIG_FILE:-$HOME/.aws/config}" 2>/dev/null
+}
+
 section "AWS SSO"
 if ! command -v aws >/dev/null 2>&1; then
 	fail "aws CLI not found"
 else
-	for profile in sso-ci-stg nbx-dev; do
-		if aws_ok "$profile"; then
-			pass "aws $profile"
+	TAB=$(printf '\t')
+	AWS_GROUPS=$(aws_groups)
+	if [ -z "$AWS_GROUPS" ]; then
+		fail "aws: no SSO profiles found in ${AWS_CONFIG_FILE:-~/.aws/config}"
+	fi
+	# Read groups on fd 3 so aws/confirm prompts keep the real stdin.
+	while IFS=$TAB read -r group members <&3; do
+		[ -n "$group" ] || continue
+		# Any member's credentials prove the shared SSO token is live.
+		first=${members%% *}
+		label=${group#legacy:}
+		[ "$label" = "$group" ] || label="legacy SSO"
+		if aws_ok "$first"; then
+			pass "aws $label ($members)"
 		else
 			# Login opens a browser, so only attempt it with a terminal.
 			if [ "$INTERACTIVE" -eq 1 ]; then
-				printf '  ..    aws %s expired, logging in\n' "$profile"
-				aws sso login --profile "$profile"
+				printf '  ..    aws %s expired, logging in via %s\n' "$label" "$first"
+				aws sso login --profile "$first"
 			fi
-			if aws_ok "$profile"; then
-				pass "aws $profile (refreshed)"
+			if aws_ok "$first"; then
+				pass "aws $label (refreshed) ($members)"
 			else
-				fail "aws $profile (run: aws sso login --profile $profile)"
+				fail "aws $label (run: aws sso login --profile $first)"
 			fi
 		fi
-	done
+	done 3<<EOF
+$AWS_GROUPS
+EOF
 fi
 
 # --- 2. ffwatch doctor ------------------------------------------------------
@@ -171,13 +232,45 @@ dr_login() {
 	else dr auth login; fi
 }
 
+# dr_profiles: print every dr profile name, one per line; the root-level
+# profile is printed as "default". Parses the pretty-printed JSON from
+# `dr auth profile list` with awk so jq is not required.
+dr_profiles() {
+	dr --output-format json auth profile list 2>/dev/null | awk '
+		/"name":/ { name = $0; sub(/^.*"name":[[:space:]]*"/, "", name); sub(/".*$/, "", name) }
+		/"root":[[:space:]]*true/ { name = "default" }
+		# End of one profile object: emit what was collected.
+		/^[[:space:]]*}/ { if (name != "") print name; name = "" }
+	'
+}
+
+# dr_excluded NAME: true when NAME is listed in DR_PROFILE_EXCLUDE.
+dr_excluded() {
+	for skip in $DR_PROFILE_EXCLUDE; do
+		[ "$skip" = "$1" ] && return 0
+	done
+	return 1
+}
+
 section "DataRobot CLI (dr auth check)"
 if ! command -v dr >/dev/null 2>&1; then
 	fail "dr not found"
 else
-	# An empty name means the default profile (no --profile flag).
-	for profile in "" ffwatch staging; do
-		label=${profile:-default}
+	DR_PROFILES=$(dr_profiles)
+	# If discovery finds nothing (CLI output changed?), never check nothing.
+	if [ -z "$DR_PROFILES" ]; then
+		printf '  ..    dr profile discovery empty, using fallback list\n'
+		DR_PROFILES="default ffwatch staging"
+	fi
+	# Profile names contain no whitespace, so word splitting is safe here.
+	for label in $DR_PROFILES; do
+		if dr_excluded "$label"; then
+			printf '  skip  dr profile: %s (DR_PROFILE_EXCLUDE)\n' "$label"
+			continue
+		fi
+		# "default" is the root-level profile: no --profile flag.
+		profile=$label
+		[ "$label" = "default" ] && profile=""
 		if dr_check "$profile"; then
 			pass "dr profile: $label"
 		else
