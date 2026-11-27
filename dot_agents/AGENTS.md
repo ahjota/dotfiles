@@ -31,6 +31,8 @@ Override default behavior: Always provide in-line comments and docstrings for an
 
 ## Tool-Specific Guidance
 
+Never truncate diagnostic output from `gh auth status` or similar account-listing commands using `head`.
+
 ### Handling Redacted Output in Read Tool
 
 **Problem**: The Read tool redacts sensitive patterns (tokens, fingerprints, credentials) in terminal output to prevent exposure in logs. This can make it hard to copy the correct function names when editing.
